@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   ShoppingBag, User, Menu, X, ChefHat, LogOut,
-  LayoutDashboard, Sun, Moon, Globe, ChevronDown,
-  UtensilsCrossed, ExternalLink, Package,
+  Sun, Moon, Globe, ChevronDown,
+  UtensilsCrossed, ExternalLink, Package, Home, BookOpen, ShoppingCart,
 } from 'lucide-react';
 
 const GLOVO_URL = 'https://glovoapp.com/ma/fr/casablanca/salmon-sushi-csb/';
@@ -19,11 +19,13 @@ const FrontNavbar = ({
   setLanguage,
   theme = 'dark',
   toggleTheme,
+  setOrderMode,
 }) => {
-  const [scrolled, setScrolled]       = useState(false);
-  const [mobileOpen, setMobileOpen]   = useState(false);
-  const [langOpen, setLangOpen]       = useState(false);
-  const [orderOpen, setOrderOpen]     = useState(false);
+  const [scrolled, setScrolled]         = useState(false);
+  const [mobileOpen, setMobileOpen]     = useState(false);
+  const [langOpen, setLangOpen]         = useState(false);
+  const [orderOpen, setOrderOpen]       = useState(false);
+  const [mobileOnlineOpen, setMobileOnlineOpen] = useState(false);
   const [onlineOpen, setOnlineOpen]   = useState(false);
 
   const langRef  = useRef(null);
@@ -76,13 +78,11 @@ const FrontNavbar = ({
   };
 
   // ── Dynamic classes ───────────────────────────────────────────────────────
-  const navBg = isLight
-    ? (scrolled
+  const navBg = scrolled
+    ? (isLight
         ? 'bg-white/98 backdrop-blur-md border-b border-gray-200 shadow-sm py-3'
-        : 'bg-white/90 backdrop-blur-sm py-5')
-    : (scrolled
-        ? 'bg-black/95 backdrop-blur-md border-b border-white/10 py-3'
-        : 'bg-transparent py-5');
+        : 'bg-black/95 backdrop-blur-md border-b border-white/10 py-3')
+    : 'bg-transparent py-5';
 
   const textBase   = isLight ? 'text-gray-600 hover:text-gray-900'         : 'text-zinc-300 hover:text-white';
   const activeText = isLight ? 'text-orange-600 font-semibold'              : 'text-orange-400 font-semibold';
@@ -116,42 +116,72 @@ const FrontNavbar = ({
         </button>
 
         {/* ── Desktop Nav ─────────────────────────────────────────────── */}
-        <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
-          {navLinks.map((link) => (
+        <div className="hidden md:flex items-center">
+
+          {/* Pill group container */}
+          <div className={`flex items-center rounded-2xl p-1 gap-0.5 ${
+            isLight
+              ? 'bg-gray-100/80 border border-gray-200'
+              : 'bg-white/5 border border-white/8'
+          }`}>
+
+            {/* Accueil */}
             <button
-              key={link.page}
-              onClick={() => handleNav(link.page)}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors duration-200 ${
-                currentPage === link.page ? activeText : textBase
+              onClick={() => handleNav('home')}
+              className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                currentPage === 'home'
+                  ? isLight
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'bg-white/15 text-white shadow-sm'
+                  : isLight
+                    ? 'text-gray-500 hover:text-gray-800 hover:bg-white/60'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'
               }`}
             >
-              {link.label}
+              <Home size={14} className={currentPage === 'home' ? 'text-orange-500' : ''} />
+              <span>{t('Accueil', 'Home', 'الرئيسية')}</span>
             </button>
-          ))}
 
-          {/* Order Dropdown */}
-          <div className="relative" ref={orderRef}>
+            {/* Menu */}
             <button
-              onClick={() => { setOrderOpen(!orderOpen); setOnlineOpen(false); }}
-              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
-                orderOpen
-                  ? (isLight ? 'bg-orange-50 text-orange-600' : 'bg-orange-500/10 text-orange-400')
-                  : (isLight ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white')
-              } shadow-md shadow-orange-500/20`}
+              onClick={() => handleNav('menu')}
+              className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                currentPage === 'menu'
+                  ? isLight
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'bg-white/15 text-white shadow-sm'
+                  : isLight
+                    ? 'text-gray-500 hover:text-gray-800 hover:bg-white/60'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'
+              }`}
             >
-              <ShoppingBag size={15} />
-              <span>{t('Commander', 'Order', 'اطلب')}</span>
-              <ChevronDown
-                size={14}
-                className={`transition-transform duration-200 ${orderOpen ? 'rotate-180' : ''}`}
-              />
+              <BookOpen size={14} className={currentPage === 'menu' ? 'text-orange-500' : ''} />
+              <span>{t('Menu', 'Menu', 'القائمة')}</span>
             </button>
+
+            {/* Commander — orange pill inside the group */}
+            <div className="relative" ref={orderRef}>
+              <button
+                onClick={() => { setOrderOpen(!orderOpen); setOnlineOpen(false); }}
+                className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  orderOpen
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-orange-500 hover:bg-orange-600 text-white'
+                } shadow-md shadow-orange-500/30`}
+              >
+                <ShoppingBag size={14} />
+                <span>{t('Commander', 'Order', 'اطلب')}</span>
+                <ChevronDown
+                  size={13}
+                  className={`transition-transform duration-200 ${orderOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
 
             {orderOpen && (
-              <div className={`absolute top-full mt-2 w-52 rounded-2xl border overflow-hidden z-50 ${dropBg}`}
+              <div className={`absolute top-full mt-2 w-56 rounded-2xl border overflow-hidden z-50 ${dropBg} py-1`}
                 style={{ left: language === 'ar' ? 'auto' : '0', right: language === 'ar' ? '0' : 'auto' }}
               >
-                {/* Dine In */}
+                {/* 1. Dine In */}
                 <button
                   onClick={() => handleNav('dine-in')}
                   className={`w-full flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${dropItem}`}
@@ -160,15 +190,28 @@ const FrontNavbar = ({
                     <UtensilsCrossed size={15} className="text-orange-500" />
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-sm">{t('Dîner sur Place', 'Dine In', 'تناول الطعام هنا')}</p>
+                    <p className="font-semibold text-sm">{t('Manger sur Place', 'Dine In', 'أكل هنا')}</p>
                     <p className={`text-xs ${isLight ? 'text-gray-400' : 'text-zinc-500'}`}>{t('Commander à table', 'Order at table', 'اطلب على الطاولة')}</p>
                   </div>
                 </button>
 
-                {/* Divider */}
+                {/* 2. Take Away */}
+                <button
+                  onClick={() => { setOrderMode?.('takeaway'); handleNav('takeaway'); }}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${dropItem}`}
+                >
+                  <div className="w-8 h-8 rounded-xl bg-green-500/15 flex items-center justify-center flex-shrink-0">
+                    <ShoppingCart size={15} className="text-green-500" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-sm">{t('À Emporter', 'Take Away', 'طلب للأخذ')}</p>
+                    <p className={`text-xs ${isLight ? 'text-gray-400' : 'text-zinc-500'}`}>{t('Prêt à récupérer', 'Ready for pick-up', 'جاهز للاستلام')}</p>
+                  </div>
+                </button>
+
                 <div className={`mx-3 border-t ${isLight ? 'border-gray-100' : 'border-white/8'}`} />
 
-                {/* Order Online (expandable) */}
+                {/* 3. Commander en Ligne (expandable) */}
                 <div>
                   <button
                     onClick={() => setOnlineOpen(!onlineOpen)}
@@ -180,29 +223,24 @@ const FrontNavbar = ({
                       </div>
                       <div className="text-left">
                         <p className="font-semibold text-sm">{t('Commander en Ligne', 'Order Online', 'اطلب أونلاين')}</p>
-                        <p className={`text-xs ${isLight ? 'text-gray-400' : 'text-zinc-500'}`}>{t('Livraison ou click & collect', 'Delivery or pick-up', 'توصيل أو استلام')}</p>
+                        <p className={`text-xs ${isLight ? 'text-gray-400' : 'text-zinc-500'}`}>{t('Livraison · Glovo', 'Delivery · Glovo', 'توصيل · Glovo')}</p>
                       </div>
                     </div>
-                    <ChevronDown
-                      size={13}
-                      className={`transition-transform duration-200 flex-shrink-0 ${onlineOpen ? 'rotate-180' : ''} ${isLight ? 'text-gray-400' : 'text-zinc-500'}`}
-                    />
+                    <ChevronDown size={13} className={`transition-transform duration-200 flex-shrink-0 ${onlineOpen ? 'rotate-180' : ''} ${isLight ? 'text-gray-400' : 'text-zinc-500'}`} />
                   </button>
 
                   {onlineOpen && (
                     <div className={`mx-2 mb-2 rounded-xl overflow-hidden border ${isLight ? 'border-gray-100 bg-gray-50' : 'border-white/5 bg-black/20'}`}>
-                      {/* Direct */}
                       <button
-                        onClick={() => handleNav('dine-in')}
+                        onClick={() => { setOrderMode?.('online'); handleNav('menu'); }}
                         className={`w-full flex items-center space-x-3 px-4 py-2.5 text-sm transition-colors ${dropItem}`}
                       >
-                        <span className="text-lg flex-shrink-0">🥡</span>
+                        <span className="text-lg flex-shrink-0">🌐</span>
                         <div className="text-left">
                           <p className="font-medium text-xs">{t('Commander Directement', 'Order Directly', 'اطلب مباشرة')}</p>
                           <p className={`text-[11px] ${isLight ? 'text-gray-400' : 'text-zinc-600'}`}>{t('Sur notre site', 'On our site', 'من موقعنا')}</p>
                         </div>
                       </button>
-                      {/* Glovo */}
                       <a
                         href={GLOVO_URL}
                         target="_blank"
@@ -224,26 +262,13 @@ const FrontNavbar = ({
                 </div>
               </div>
             )}
-          </div>
-        </div>
+            </div>  {/* end Commander relative */}
+
+          </div>  {/* end pill group */}
+        </div>  {/* end desktop nav */}
 
         {/* ── Right Actions ────────────────────────────────────────────── */}
         <div className="flex items-center space-x-1 sm:space-x-2">
-
-          {/* Staff button */}
-          {onGoToBackoffice && (
-            <button
-              onClick={onGoToBackoffice}
-              className={`hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-xs border transition-all ${
-                isLight
-                  ? 'bg-gray-100 hover:bg-orange-50 border-gray-200 hover:border-orange-200 text-gray-500 hover:text-orange-600'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-orange-500/30 text-zinc-400 hover:text-orange-400'
-              }`}
-            >
-              <LayoutDashboard size={12} />
-              <span>Staff</span>
-            </button>
-          )}
 
           {/* Theme toggle */}
           <button
@@ -286,7 +311,7 @@ const FrontNavbar = ({
 
           {/* Cart */}
           <button
-            onClick={() => navigate('dine-in')}
+            onClick={() => navigate('cart')}
             className={`relative p-2 transition-colors rounded-full ${iconBtn}`}
           >
             <ShoppingBag size={20} />
@@ -346,58 +371,99 @@ const FrontNavbar = ({
 
       {/* ── Mobile Menu ──────────────────────────────────────────────────── */}
       {mobileOpen && (
-        <div className={`md:hidden absolute top-full left-0 right-0 ${
-          isLight ? 'bg-white/98 border-b border-gray-200' : 'bg-black/98 border-b border-white/10'
-        } px-5 py-4`}>
+        <div className={`md:hidden fixed top-0 left-0 right-0 bottom-0 z-40 flex flex-col`}>
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          {/* Panel */}
+          <div className={`relative mt-[60px] mx-3 rounded-2xl overflow-y-auto max-h-[85vh] shadow-2xl border ${
+            isLight ? 'bg-white border-gray-200' : 'bg-[#0f0f0f] border-white/10'
+          } px-5 py-4`}>
 
           {/* Nav links */}
           <div className="space-y-1 mb-3">
-            {navLinks.map((link) => (
+            {[
+              { label: t('Accueil', 'Home', 'الرئيسية'), page: 'home', icon: <Home size={16} /> },
+              { label: t('Menu', 'Menu', 'القائمة'), page: 'menu', icon: <BookOpen size={16} /> },
+            ].map((link) => (
               <button
                 key={link.page}
                 onClick={() => handleNav(link.page)}
-                className={`w-full text-left py-3 px-3 text-sm font-medium rounded-xl transition-colors ${
+                className={`w-full flex items-center space-x-3 py-3 px-3 text-sm font-medium rounded-xl transition-colors ${
                   currentPage === link.page
                     ? (isLight ? 'bg-orange-50 text-orange-600' : 'bg-orange-500/10 text-orange-400')
                     : (isLight ? 'text-gray-700 hover:bg-gray-50' : 'text-zinc-300 hover:bg-white/5')
                 }`}
               >
-                {link.label}
+                <span className={currentPage === link.page ? 'text-orange-500' : (isLight ? 'text-gray-400' : 'text-zinc-500')}>
+                  {link.icon}
+                </span>
+                <span>{link.label}</span>
               </button>
             ))}
 
             {/* Mobile Order section */}
-            <div className={`rounded-xl border overflow-hidden ${isLight ? 'border-gray-100' : 'border-white/8'}`}>
-              <p className={`px-3 pt-2.5 pb-1.5 text-xs font-bold uppercase tracking-widest ${isLight ? 'text-gray-400' : 'text-zinc-500'}`}>
+            <div className={`rounded-xl border overflow-hidden ${isLight ? 'border-gray-200 bg-gray-50' : 'border-white/8 bg-white/3'}`}>
+              <p className={`px-3 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-widest ${isLight ? 'text-gray-400' : 'text-zinc-500'}`}>
                 {t('Commander', 'Order', 'اطلب')}
               </p>
               <button
-                onClick={() => handleNav('dine-in')}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 text-sm transition-colors ${isLight ? 'text-gray-700 hover:bg-gray-50' : 'text-zinc-300 hover:bg-white/5'}`}
+                onClick={() => { setOrderMode?.('dine-in'); handleNav('dine-in'); }}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 text-sm transition-colors ${isLight ? 'text-gray-700 hover:bg-gray-100' : 'text-zinc-300 hover:bg-white/5'}`}
               >
-                <span className="text-xl">🍽️</span>
-                <span className="font-medium">{t('Dîner sur Place', 'Dine In', 'تناول الطعام هنا')}</span>
+                <span className="text-lg w-7 text-center">🍽️</span>
+                <div className="text-left">
+                  <p className="font-medium text-sm">{t('Manger sur Place', 'Dine In', 'أكل هنا')}</p>
+                  <p className={`text-xs ${isLight ? 'text-gray-400' : 'text-zinc-600'}`}>{t('Commander à table', 'At the table', 'اطلب على الطاولة')}</p>
+                </div>
               </button>
               <button
-                onClick={() => handleNav('dine-in')}
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 text-sm transition-colors ${isLight ? 'text-gray-700 hover:bg-gray-50' : 'text-zinc-300 hover:bg-white/5'}`}
+                onClick={() => handleNav('takeaway')}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 text-sm transition-colors ${isLight ? 'text-gray-700 hover:bg-gray-100' : 'text-zinc-300 hover:bg-white/5'}`}
               >
-                <span className="text-xl">🥡</span>
-                <span className="font-medium">{t('Commander Directement', 'Order Directly', 'اطلب مباشرة')}</span>
+                <span className="text-lg w-7 text-center">🥡</span>
+                <div className="text-left">
+                  <p className="font-medium text-sm">{t('À Emporter', 'Take Away', 'طلب للأخذ')}</p>
+                  <p className={`text-xs ${isLight ? 'text-gray-400' : 'text-zinc-600'}`}>{t('Click & collect', 'Click & collect', 'استلام مباشر')}</p>
+                </div>
               </button>
-              <a
-                href={GLOVO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center justify-between px-3 py-2.5 text-sm transition-colors mb-1 ${isLight ? 'text-gray-700 hover:bg-gray-50' : 'text-zinc-300 hover:bg-white/5'}`}
+              {/* Commander en Ligne — expandable */}
+              <button
+                onClick={() => setMobileOnlineOpen(o => !o)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 text-sm transition-colors ${isLight ? 'text-gray-700 hover:bg-gray-100' : 'text-zinc-300 hover:bg-white/5'}`}
               >
                 <div className="flex items-center space-x-3">
-                  <span className="text-xl">🛵</span>
-                  <span className="font-medium">{t('Commander via Glovo', 'Order via Glovo', 'اطلب عبر Glovo')}</span>
+                  <span className="text-lg w-7 text-center">📦</span>
+                  <div className="text-left">
+                    <p className="font-medium text-sm text-blue-500">{t('Commander en Ligne', 'Order Online', 'اطلب أونلاين')}</p>
+                    <p className={`text-xs ${isLight ? 'text-gray-400' : 'text-zinc-600'}`}>{t('Via notre site ou Glovo', 'Via our site or Glovo', 'موقعنا أو Glovo')}</p>
+                  </div>
                 </div>
-                <ExternalLink size={13} className={isLight ? 'text-gray-400' : 'text-zinc-600'} />
-              </a>
+                <ChevronDown size={13} className={`transition-transform ${mobileOnlineOpen ? 'rotate-180' : ''} ${isLight ? 'text-gray-400' : 'text-zinc-600'}`} />
+              </button>
+              {mobileOnlineOpen && (
+                <div className={`mx-3 mb-2 rounded-xl overflow-hidden border ${isLight ? 'border-blue-100 bg-blue-50/50' : 'border-blue-500/20 bg-blue-500/5'}`}>
+                  <button
+                    onClick={() => { setOrderMode?.('online'); handleNav('menu'); }}
+                    className={`w-full flex items-center space-x-3 px-3 py-2.5 text-sm transition-colors ${isLight ? 'text-gray-700 hover:bg-white' : 'text-zinc-300 hover:bg-white/5'}`}
+                  >
+                    <span className="text-base w-6 text-center">🌐</span>
+                    <span className="font-medium">{t('Notre site web', 'Our website', 'موقعنا')}</span>
+                  </button>
+                  <a
+                    href={GLOVO_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center justify-between px-3 py-2.5 text-sm transition-colors ${isLight ? 'text-gray-700 hover:bg-white' : 'text-zinc-300 hover:bg-white/5'}`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="text-base w-6 text-center">🛵</span>
+                      <span className="font-medium">Glovo</span>
+                    </div>
+                    <ExternalLink size={12} className="text-blue-400" />
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
@@ -445,17 +511,7 @@ const FrontNavbar = ({
             </div>
           )}
 
-          {onGoToBackoffice && (
-            <div className={`pt-3 border-t mt-3 ${isLight ? 'border-gray-100' : 'border-white/5'}`}>
-              <button
-                onClick={() => { onGoToBackoffice(); setMobileOpen(false); }}
-                className={`w-full flex items-center space-x-2 py-2 text-xs ${isLight ? 'text-gray-400 hover:text-orange-600' : 'text-zinc-500 hover:text-orange-400'} transition-colors`}
-              >
-                <LayoutDashboard size={14} />
-                <span>Accès Staff / Backoffice</span>
-              </button>
-            </div>
-          )}
+          </div>
         </div>
       )}
     </nav>

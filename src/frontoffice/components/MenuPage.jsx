@@ -1,20 +1,30 @@
 import React, { useState } from 'react';
-import { Search, ShoppingBag, X } from 'lucide-react';
+import { Search, ShoppingBag, X, ArrowRight } from 'lucide-react';
 import { MENU_ITEMS, CATEGORIES } from '../../data/menuData';
 
 // Fallback to named export aliases if old names were used
 const menuItems = MENU_ITEMS || [];
 const menuCategories = CATEGORIES || [];
 
+const MODE_META = {
+  'dine-in':  { emoji: '🍽️', label: 'Sur Place',   color: 'bg-orange-500/15 border-orange-500/40 text-orange-500' },
+  'takeaway': { emoji: '🥡', label: 'À Emporter',  color: 'bg-green-500/15 border-green-500/40 text-green-500'   },
+  'online':   { emoji: '🌐', label: 'En Ligne',    color: 'bg-blue-500/15 border-blue-500/40 text-blue-500'       },
+};
+
 const MenuPage = ({
   navigate,
   addToCart,
   cart,
+  cartCount = 0,
+  cartTotal = 0,
   language = 'fr',
   theme = 'dark',
   isLight = false,
   activeDiscount = 0,
   getDiscountedPrice,
+  orderMode = null,
+  setOrderMode,
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [search, setSearch] = useState('');
@@ -233,6 +243,41 @@ const MenuPage = ({
           </div>
         )}
       </div>
+
+      {/* ── Mode badge ─────────────────────────────────────────────────────── */}
+      {orderMode && MODE_META[orderMode] && (
+        <div className="fixed bottom-6 left-4 z-40 flex items-center space-x-2">
+          <div className={`flex items-center space-x-2 px-3 py-2 rounded-2xl border backdrop-blur-sm text-xs font-bold shadow-lg ${MODE_META[orderMode].color}`}>
+            <span>{MODE_META[orderMode].emoji}</span>
+            <span>{MODE_META[orderMode].label}</span>
+            {setOrderMode && (
+              <button
+                onClick={() => setOrderMode(null)}
+                className="ml-1 opacity-60 hover:opacity-100 text-xs font-black"
+                title="Changer de mode"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Cart FAB ────────────────────────────────────────────────────────── */}
+      {cartCount > 0 && (
+        <div className="fixed bottom-6 right-4 z-40">
+          <button
+            onClick={() => navigate('cart')}
+            className="flex items-center space-x-3 px-5 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-2xl shadow-orange-500/40 transition-all hover:scale-105 active:scale-95"
+          >
+            <ShoppingBag size={20} />
+            <span>{cartCount} article{cartCount > 1 ? 's' : ''}</span>
+            <span className="opacity-80">·</span>
+            <span className="font-extrabold">{cartTotal} Dh</span>
+            <ArrowRight size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

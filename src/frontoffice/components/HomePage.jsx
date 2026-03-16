@@ -1,9 +1,119 @@
-import React from 'react';
-import { ArrowRight, MapPin, Clock, Phone, Star, ChevronRight, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, MapPin, Clock, Phone, Star, ChevronRight, ExternalLink, X, UtensilsCrossed, ShoppingCart, Package } from 'lucide-react';
 import { menuItems, restaurantInfo } from '../../data/menuData';
 
+const GLOVO_URL = 'https://glovoapp.com/ma/fr/casablanca/salmon-sushi-csb/';
+
+// ─── Order Picker Modal ───────────────────────────────────────────────────────
+const OrderPickerModal = ({ isLight, navigate, onClose, setOrderMode }) => {
+  const [onlineOpen, setOnlineOpen] = useState(false);
+
+  const overlay   = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm';
+  const card      = isLight ? 'bg-white border border-gray-200 shadow-2xl' : 'bg-[#111111] border border-white/10 shadow-2xl shadow-black/60';
+  const titleCol  = isLight ? 'text-gray-900' : 'text-white';
+  const subCol    = isLight ? 'text-gray-500' : 'text-zinc-400';
+  const closeBtnC = isLight ? 'text-gray-400 hover:text-gray-700 hover:bg-gray-100' : 'text-zinc-500 hover:text-white hover:bg-white/10';
+  const onlineBg  = isLight ? 'bg-blue-50 border-blue-200' : 'bg-blue-500/10 border-blue-500/20';
+  const subBtnC   = isLight ? 'bg-white border-gray-200 hover:border-blue-300 text-gray-700 hover:shadow-sm' : 'bg-white/5 border-white/10 hover:border-blue-500/40 text-white';
+
+  return (
+    <div className={overlay} onClick={onClose}>
+      <div className={`w-full max-w-sm rounded-3xl p-6 ${card}`} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className={`text-xl font-extrabold ${titleCol}`}>Comment commander ?</h2>
+            <p className={`text-xs mt-0.5 ${subCol}`}>Choisissez votre mode de commande</p>
+          </div>
+          <button onClick={onClose} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${closeBtnC}`}>
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="space-y-2.5">
+          {/* Dine In */}
+          <button
+            onClick={() => { setOrderMode?.('dine-in'); navigate('dine-in'); onClose(); }}
+            className={`w-full flex items-center space-x-4 px-4 py-3.5 border rounded-2xl transition-all hover:scale-[1.01] text-left ${
+              isLight ? 'bg-white border-gray-200 hover:border-orange-300 hover:shadow-md hover:shadow-orange-100' : 'bg-white/5 border-white/10 hover:border-orange-500/40 hover:bg-white/8'
+            }`}
+          >
+            <div className="w-11 h-11 rounded-xl bg-orange-500/15 flex items-center justify-center flex-shrink-0">
+              <UtensilsCrossed size={20} className="text-orange-500" />
+            </div>
+            <div className="flex-1">
+              <p className={`font-bold text-sm ${titleCol}`}>Manger sur Place</p>
+              <p className={`text-xs ${subCol}`}>Commandez directement à votre table</p>
+            </div>
+            <ArrowRight size={15} className={subCol} />
+          </button>
+
+          {/* Take Away */}
+          <button
+            onClick={() => { setOrderMode?.('takeaway'); navigate('takeaway'); onClose(); }}
+            className={`w-full flex items-center space-x-4 px-4 py-3.5 border rounded-2xl transition-all hover:scale-[1.01] text-left ${
+              isLight ? 'bg-white border-gray-200 hover:border-green-300 hover:shadow-md hover:shadow-green-100' : 'bg-white/5 border-white/10 hover:border-green-500/40 hover:bg-white/8'
+            }`}
+          >
+            <div className="w-11 h-11 rounded-xl bg-green-500/15 flex items-center justify-center flex-shrink-0">
+              <ShoppingCart size={20} className="text-green-500" />
+            </div>
+            <div className="flex-1">
+              <p className={`font-bold text-sm ${titleCol}`}>À Emporter</p>
+              <p className={`text-xs ${subCol}`}>Click & collect — prêt à récupérer</p>
+            </div>
+            <ArrowRight size={15} className={subCol} />
+          </button>
+
+          {/* Commander en Ligne */}
+          <div className={`border rounded-2xl overflow-hidden transition-all ${onlineOpen ? onlineBg : isLight ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'}`}>
+            <button
+              onClick={() => setOnlineOpen(o => !o)}
+              className="w-full flex items-center space-x-4 px-4 py-3.5 text-left"
+            >
+              <div className="w-11 h-11 rounded-xl bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                <Package size={20} className="text-blue-500" />
+              </div>
+              <div className="flex-1">
+                <p className={`font-bold text-sm ${titleCol}`}>Commander en Ligne</p>
+                <p className={`text-xs ${subCol}`}>Via notre site ou via Glovo</p>
+              </div>
+              <ChevronRight size={15} className={`transition-transform ${onlineOpen ? 'rotate-90' : ''} ${subCol}`} />
+            </button>
+            {onlineOpen && (
+              <div className="px-4 pb-3 space-y-2">
+                <button
+                  onClick={() => { setOrderMode?.('online'); navigate('menu'); onClose(); }}
+                  className={`w-full flex items-center space-x-3 px-3 py-2.5 border rounded-xl text-sm font-medium transition-all ${subBtnC}`}
+                >
+                  <span>🌐</span>
+                  <span className="flex-1 text-left">Commander sur notre site</span>
+                  <ArrowRight size={13} className="text-blue-500" />
+                </button>
+                <a
+                  href={GLOVO_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={onClose}
+                  className={`w-full flex items-center space-x-3 px-3 py-2.5 border rounded-xl text-sm font-medium transition-all ${subBtnC}`}
+                >
+                  <span>🛵</span>
+                  <span className="flex-1 text-left">Commander via Glovo</span>
+                  <ExternalLink size={13} className="text-blue-500" />
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Hero ─────────────────────────────────────────────────────────────────────
-const Hero = ({ navigate, isLight }) => (
+const Hero = ({ navigate, isLight, setOrderMode }) => {
+  const [showPicker, setShowPicker] = useState(false);
+  return (
   <section className={`relative min-h-screen flex items-center justify-center overflow-hidden ${isLight ? 'bg-gradient-to-br from-orange-50 via-white to-red-50' : ''}`}>
     {/* Background */}
     {isLight ? (
@@ -40,14 +150,6 @@ const Hero = ({ navigate, isLight }) => (
     ))}
 
     <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-      {/* Badge */}
-      <div className={`inline-flex items-center space-x-2 px-4 py-2 border rounded-full text-sm font-medium mb-8 ${
-        isLight ? 'bg-orange-100 border-orange-200 text-orange-600' : 'bg-orange-500/10 border-orange-500/30 text-orange-400'
-      }`}>
-        <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
-        <span>Casablanca · Sidi Maarouf · Ouvert aujourd'hui</span>
-      </div>
-
       {/* Heading */}
       <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold leading-tight mb-6 tracking-tight">
         <span className={isLight ? 'text-gray-900' : 'text-white'}>L'Art du </span>
@@ -72,14 +174,14 @@ const Hero = ({ navigate, isLight }) => (
           <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
         </button>
         <button
-          onClick={() => navigate('dine-in')}
+          onClick={() => setShowPicker(true)}
           className={`group flex items-center space-x-2 px-8 py-4 border font-semibold text-base rounded-full backdrop-blur-sm transition-all ${
             isLight
               ? 'bg-white/80 border-gray-300 text-gray-700 hover:bg-white hover:border-orange-300'
               : 'bg-white/10 hover:bg-white/15 border-white/20 text-white'
           }`}
         >
-          <span>🍽️ Commander à Table</span>
+          <span>🍽️ Commander</span>
           <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
@@ -100,9 +202,8 @@ const Hero = ({ navigate, isLight }) => (
     </div>
 
     {/* Scroll indicator */}
-    <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center text-xs space-y-2 animate-bounce ${isLight ? 'text-gray-400' : 'text-zinc-600'}`}>
-      <span>Défiler</span>
-      <div className={`w-px h-6 ${isLight ? 'bg-gray-300' : 'bg-zinc-600'}`} />
+    <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center animate-bounce`}>
+      <div className={`w-px h-8 ${isLight ? 'bg-gray-300' : 'bg-zinc-700'}`} />
     </div>
 
     <style>{`
@@ -111,8 +212,18 @@ const Hero = ({ navigate, isLight }) => (
         100% { transform: translateY(-20px) rotate(10deg); }
       }
     `}</style>
+
+    {showPicker && (
+      <OrderPickerModal
+        isLight={isLight}
+        navigate={navigate}
+        onClose={() => setShowPicker(false)}
+        setOrderMode={setOrderMode}
+      />
+    )}
   </section>
-);
+  );
+};
 
 // ─── Values ───────────────────────────────────────────────────────────────────
 const Values = ({ isLight }) => (
@@ -474,10 +585,10 @@ const SocialSection = ({ isLight }) => {
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-const HomePage = ({ navigate, addToCart, isLight = false }) => {
+const HomePage = ({ navigate, addToCart, isLight = false, setOrderMode }) => {
   return (
     <div>
-      <Hero navigate={navigate} isLight={isLight} />
+      <Hero navigate={navigate} isLight={isLight} setOrderMode={setOrderMode} />
       <Values isLight={isLight} />
       <FeaturedMenu navigate={navigate} addToCart={addToCart} isLight={isLight} />
       <OurStory isLight={isLight} />

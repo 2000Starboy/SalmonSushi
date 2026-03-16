@@ -5,6 +5,10 @@ import HomePage from './components/HomePage';
 import MenuPage from './components/MenuPage';
 import ProductPage from './components/ProductPage';
 import DineInFlow from './components/DineInFlow';
+import CartPage from './components/CartPage';
+import TakeAwayFlow from './components/TakeAwayFlow';
+import UnifiedCheckout from './components/UnifiedCheckout';
+import OrderConfirmation from './components/OrderConfirmation';
 import CustomerAuth from './components/CustomerAuth';
 import CustomerProfile from './components/CustomerProfile';
 import Footer from './components/Footer';
@@ -29,28 +33,33 @@ const FrontApp = ({
 
   useEffect(() => {
     localStorage.setItem('salmon_theme', theme);
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    if (theme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
   }, [theme]);
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-
   const isLight = theme === 'light';
   const isRTL = language === 'ar';
 
-  // ── Routing ──────────────────────────────────────
+  // ── Routing ───────────────────────────────────────
   const [page, setPage] = useState('home');
   const [selectedItemId, setSelectedItemId] = useState(null);
 
-  // ── Auth ─────────────────────────────────────────
+  // ── Order Mode (unified) ──────────────────────────
+  // null | 'dine-in' | 'takeaway' | 'online'
+  const [orderMode, setOrderMode] = useState(null);
+
+  // ── Last Order (for confirmation page) ───────────
+  const [lastOrderId, setLastOrderId] = useState(null);
+  const [lastOrderPoints, setLastOrderPoints] = useState(0);
+  const [lastOrderTotal, setLastOrderTotal] = useState(0);
+
+  // ── Auth ──────────────────────────────────────────
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [currentCustomer, setCurrentCustomer] = useState(null);
 
-  // ── Cart ─────────────────────────────────────────
+  // ── Cart ──────────────────────────────────────────
   const [cart, setCart] = useState([]);
   const [tableNumber, setTableNumber] = useState('');
 
@@ -61,7 +70,7 @@ const FrontApp = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ── Cart helpers ─────────────────────────────────
+  // ── Cart helpers ──────────────────────────────────
   const addToCart = (item, qty = 1) => {
     setCart(prev => {
       const existing = prev.find(c => c.item.id === item.id);
@@ -83,7 +92,6 @@ const FrontApp = ({
 
   // ── Auth helpers ──────────────────────────────────
   const openAuth = (mode = 'login') => { setAuthMode(mode); setShowAuth(true); };
-
   const handleLogin = (customer) => { setCurrentCustomer(customer); setShowAuth(false); };
 
   const handleSignup = (newCustomer) => {
@@ -106,7 +114,7 @@ const FrontApp = ({
     if (page === 'profile') navigate('home');
   };
 
-  // ── Apply offer discount to price ────────────────
+  // ── Offer discount ────────────────────────────────
   const getDiscountedPrice = (originalPrice) => {
     if (!activeOffers.length) return originalPrice;
     const best = activeOffers.reduce((max, o) => o.discountPercent > max ? o.discountPercent : max, 0);
@@ -118,31 +126,40 @@ const FrontApp = ({
     : 0;
 
   // ── Order placement ───────────────────────────────
-  const placeOrder = ({ tip, paymentMethod, pointsUsed }) => {
+  const placeOrder = ({ tip, paymentMethod, pointsUsed, extra = {} }) => {
     const subtotal = cartTotal;
     const pointsDiscount = (pointsUsed || 0) * 0.1;
     const discountFromOffer = activeDiscount > 0 ? subtotal * (activeDiscount / 100) : 0;
-    const total = subtotal + (tip || 0) - pointsDiscount - discountFromOffer;
+    const total = Math.max(0, subtotal + (tip || 0) - pointsDiscount - discountFromOffer);
+    const roundedTotal = Math.round(total);
+    const pointsEarned = Math.floor(roundedTotal);
 
+    const mode = extra.type || orderMode || 'dine-in';
     const orderId = `#${1100 + ordersData.length}`;
+
+    // Build location string based on mode
+    let location = `Dine-in (Table ${extra.tableNumber || tableNumber})`;
+    if (mode === 'takeaway') location = `À Emporter — ${extra.name || ''}`;
+    if (mode === 'online')   location = `En Ligne — ${extra.deliveryAddress || ''}`;
+
     const newOrder = {
       id: orderId,
-      customer: currentCustomer ? currentCustomer.name : `Table ${tableNumber}`,
+      customer: currentCustomer ? currentCustomer.name : (extra.name || `Table ${extra.tableNumber || tableNumber}`),
       items: cart.map(c => `${c.qty}x ${c.item.name}`).join(', '),
-      total: `${Math.round(total)} Dh`,
+      total: `${roundedTotal} Dh`,
       status: 'new',
-      platform: 'Direct',
+      platform: mode === 'online' ? 'En Ligne' : 'Direct',
       time: 'Maintenant',
-      location: `Dine-in (Table ${tableNumber})`,
+      location,
       paymentMethod,
       tip: `${tip || 0} Dh`,
       source: 'frontoffice',
+      mode,
     };
 
     setOrdersData(prev => [newOrder, ...prev]);
 
     if (currentCustomer) {
-      const pointsEarned = Math.floor(total);
       const updatedCustomer = {
         ...currentCustomer,
         points: Math.max(0, (currentCustomer.points || 0) - (pointsUsed || 0)) + pointsEarned,
@@ -157,10 +174,16 @@ const FrontApp = ({
       setFrontCustomers(prev => prev.map(c => c.id === currentCustomer.id ? updatedCustomer : c));
     }
 
+    // Store last order info for confirmation page
+    setLastOrderId(orderId);
+    setLastOrderPoints(pointsEarned);
+    setLastOrderTotal(roundedTotal);
+
     clearCart();
     return orderId;
   };
 
+  // ── Shared props (passed to every page) ──────────
   const sharedProps = {
     navigate,
     currentCustomer,
@@ -183,20 +206,31 @@ const FrontApp = ({
     activeOffers,
     activeDiscount,
     getDiscountedPrice,
+    // Order mode (unified flow)
+    orderMode,
+    setOrderMode,
+    // Last order (for confirmation)
+    lastOrderId,
+    lastOrderPoints,
+    lastOrderTotal,
   };
 
+  // ── Page renderer ─────────────────────────────────
   const renderPage = () => {
     switch (page) {
-      case 'home': return <HomePage {...sharedProps} />;
-      case 'menu': return <MenuPage {...sharedProps} />;
-      case 'product': return <ProductPage {...sharedProps} itemId={selectedItemId} />;
-      case 'dine-in': return <DineInFlow {...sharedProps} />;
-      case 'profile': return <CustomerProfile {...sharedProps} />;
-      default: return <HomePage {...sharedProps} />;
+      case 'home':         return <HomePage {...sharedProps} />;
+      case 'menu':         return <MenuPage {...sharedProps} />;
+      case 'product':      return <ProductPage {...sharedProps} itemId={selectedItemId} />;
+      case 'dine-in':      return <DineInFlow {...sharedProps} />;
+      case 'takeaway':     return <TakeAwayFlow {...sharedProps} />;
+      case 'cart':         return <CartPage {...sharedProps} />;
+      case 'checkout':     return <UnifiedCheckout {...sharedProps} />;
+      case 'confirmation': return <OrderConfirmation {...sharedProps} />;
+      case 'profile':      return <CustomerProfile {...sharedProps} />;
+      default:             return <HomePage {...sharedProps} />;
     }
   };
 
-  // ── Theme classes for the page wrapper ────────────
   const pageClass = isLight
     ? 'min-h-screen bg-gray-50 text-gray-900 font-sans'
     : 'min-h-screen bg-[#0d0d0d] text-white font-sans';
@@ -212,26 +246,12 @@ const FrontApp = ({
       />
 
       <main>
-        {/* Offers Banner - shown on home and menu pages */}
         {(page === 'home' || page === 'menu') && activeOffers.length > 0 && (
           <div className="pt-16 sm:pt-20">
-            <OffersBanner
-              offers={activeOffers}
-              navigate={navigate}
-              language={language}
-              theme={theme}
-            />
+            <OffersBanner offers={activeOffers} navigate={navigate} language={language} theme={theme} />
           </div>
         )}
-
-        {/* Page content - add top padding on pages without banner */}
-        <div className={
-          (page === 'home' || page === 'menu') && activeOffers.length > 0
-            ? ''
-            : ''
-        }>
-          {renderPage()}
-        </div>
+        {renderPage()}
       </main>
 
       <Footer
