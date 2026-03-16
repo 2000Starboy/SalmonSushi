@@ -1,17 +1,21 @@
+// ═══════════════════════════════════════════════════════════
+//  ASAKA SUSHI — Front Office App Shell
+//  State-based routing, global cart, auth, order mode
+// ═══════════════════════════════════════════════════════════
 import React, { useState, useEffect } from 'react';
 import FrontNavbar from './components/FrontNavbar';
+import BottomNav from './components/BottomNav';
 import OffersBanner from './components/OffersBanner';
 import HomePage from './components/HomePage';
 import MenuPage from './components/MenuPage';
-import ProductPage from './components/ProductPage';
-import DineInFlow from './components/DineInFlow';
 import CartPage from './components/CartPage';
-import TakeAwayFlow from './components/TakeAwayFlow';
 import UnifiedCheckout from './components/UnifiedCheckout';
 import OrderConfirmation from './components/OrderConfirmation';
 import CustomerAuth from './components/CustomerAuth';
 import CustomerProfile from './components/CustomerProfile';
 import Footer from './components/Footer';
+import { ToastContainer } from '../utils/toast';
+import { ORDER_CONFIG } from '../data/asakaData';
 
 const FrontApp = ({
   onGoToBackoffice,
@@ -21,38 +25,34 @@ const FrontApp = ({
   setFrontCustomers,
   activeOffers = [],
 }) => {
-  // ── Language & Theme ──────────────────────────────
-  const [language, setLanguage] = useState(() => localStorage.getItem('salmon_lang') || 'fr');
-  const [theme, setTheme] = useState(() => localStorage.getItem('salmon_theme') || 'dark');
+  // ── Theme (always dark for Asaka) ─────────────────
+  const [theme] = useState('dark');
+  const isLight = false;
 
   useEffect(() => {
-    localStorage.setItem('salmon_lang', language);
-    document.documentElement.lang = language;
-    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
-  }, [language]);
-
-  useEffect(() => {
-    localStorage.setItem('salmon_theme', theme);
-    if (theme === 'dark') document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  }, [theme]);
-
-  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  const isLight = theme === 'light';
-  const isRTL = language === 'ar';
+    document.documentElement.classList.add('dark');
+  }, []);
 
   // ── Routing ───────────────────────────────────────
   const [page, setPage] = useState('home');
   const [selectedItemId, setSelectedItemId] = useState(null);
 
-  // ── Order Mode (unified) ──────────────────────────
-  // null | 'dine-in' | 'takeaway' | 'online'
-  const [orderMode, setOrderMode] = useState(null);
+  // ── Order Mode ────────────────────────────────────
+  // null | 'takeaway' | 'delivery'  (dine-in removed)
+  const [orderMode, setOrderModeState] = useState(null);
 
-  // ── Last Order (for confirmation page) ───────────
+  const setOrderMode = (mode) => {
+    // Enforce only valid modes
+    if (mode === null || mode === 'takeaway' || mode === 'delivery') {
+      setOrderModeState(mode);
+    }
+  };
+
+  // ── Last Order ────────────────────────────────────
   const [lastOrderId, setLastOrderId] = useState(null);
   const [lastOrderPoints, setLastOrderPoints] = useState(0);
   const [lastOrderTotal, setLastOrderTotal] = useState(0);
+  const [lastOrderMode, setLastOrderMode] = useState(null);
 
   // ── Auth ──────────────────────────────────────────
   const [showAuth, setShowAuth] = useState(false);
@@ -61,7 +61,6 @@ const FrontApp = ({
 
   // ── Cart ──────────────────────────────────────────
   const [cart, setCart] = useState([]);
-  const [tableNumber, setTableNumber] = useState('');
 
   // ── Navigation ────────────────────────────────────
   const navigate = (target, params = {}) => {
@@ -74,16 +73,21 @@ const FrontApp = ({
   const addToCart = (item, qty = 1) => {
     setCart(prev => {
       const existing = prev.find(c => c.item.id === item.id);
-      if (existing) return prev.map(c => c.item.id === item.id ? { ...c, qty: c.qty + qty } : c);
+      if (existing) return prev.map(c =>
+        c.item.id === item.id ? { ...c, qty: c.qty + qty } : c
+      );
       return [...prev, { item, qty }];
     });
   };
 
-  const removeFromCart = (itemId) => setCart(prev => prev.filter(c => c.item.id !== itemId));
+  const removeFromCart = (itemId) =>
+    setCart(prev => prev.filter(c => c.item.id !== itemId));
 
   const updateCartQty = (itemId, qty) => {
     if (qty <= 0) { removeFromCart(itemId); return; }
-    setCart(prev => prev.map(c => c.item.id === itemId ? { ...c, qty } : c));
+    setCart(prev => prev.map(c =>
+      c.item.id === itemId ? { ...c, qty } : c
+    ));
   };
 
   const clearCart = () => setCart([]);
@@ -91,17 +95,18 @@ const FrontApp = ({
   const cartCount = cart.reduce((sum, c) => sum + c.qty, 0);
 
   // ── Auth helpers ──────────────────────────────────
-  const openAuth = (mode = 'login') => { setAuthMode(mode); setShowAuth(true); };
+  const openAuth  = (mode = 'login') => { setAuthMode(mode); setShowAuth(true); };
   const handleLogin = (customer) => { setCurrentCustomer(customer); setShowAuth(false); };
 
   const handleSignup = (newCustomer) => {
     const customer = {
       ...newCustomer,
-      id: `FC-${Date.now()}`,
+      id: `AC-${Date.now()}`,
       points: 0,
       totalOrders: 0,
       totalSpent: 0,
       orderHistory: [],
+      favorites: [],
       joinedDate: new Date().toLocaleDateString('fr-MA'),
     };
     setFrontCustomers(prev => [...prev, customer]);
@@ -115,75 +120,92 @@ const FrontApp = ({
   };
 
   // ── Offer discount ────────────────────────────────
-  const getDiscountedPrice = (originalPrice) => {
-    if (!activeOffers.length) return originalPrice;
-    const best = activeOffers.reduce((max, o) => o.discountPercent > max ? o.discountPercent : max, 0);
-    return best > 0 ? Math.round(originalPrice * (1 - best / 100)) : originalPrice;
-  };
-
   const activeDiscount = activeOffers.length > 0
     ? Math.max(...activeOffers.map(o => o.discountPercent))
     : 0;
 
-  // ── Order placement ───────────────────────────────
-  const placeOrder = ({ tip, paymentMethod, pointsUsed, extra = {} }) => {
-    const subtotal = cartTotal;
-    const pointsDiscount = (pointsUsed || 0) * 0.1;
-    const discountFromOffer = activeDiscount > 0 ? subtotal * (activeDiscount / 100) : 0;
-    const total = Math.max(0, subtotal + (tip || 0) - pointsDiscount - discountFromOffer);
-    const roundedTotal = Math.round(total);
-    const pointsEarned = Math.floor(roundedTotal);
+  const getDiscountedPrice = (originalPrice) => {
+    if (!activeOffers.length) return originalPrice;
+    return activeDiscount > 0
+      ? Math.round(originalPrice * (1 - activeDiscount / 100))
+      : originalPrice;
+  };
 
-    const mode = extra.type || orderMode || 'dine-in';
+  // ── Order placement ───────────────────────────────
+  const placeOrder = ({ tip = 0, paymentMethod = 'cash', pointsUsed = 0, extra = {} }) => {
+    const subtotal       = cartTotal;
+    const pointsDiscount = pointsUsed * (ORDER_CONFIG?.pointsValue ?? 0.1);
+    const offerDiscount  = activeDiscount > 0 ? subtotal * (activeDiscount / 100) : 0;
+    const deliveryFee    = (extra.type || orderMode) === 'delivery'
+      ? (ORDER_CONFIG?.deliveryFee ?? 20)
+      : 0;
+    const total          = Math.max(0, subtotal + tip - pointsDiscount - offerDiscount + deliveryFee);
+    const roundedTotal   = Math.round(total);
+    const pointsEarned   = Math.floor(roundedTotal);
+
+    const mode    = extra.type || orderMode || 'takeaway';
     const orderId = `#${1100 + ordersData.length}`;
 
-    // Build location string based on mode
-    let location = `Dine-in (Table ${extra.tableNumber || tableNumber})`;
-    if (mode === 'takeaway') location = `À Emporter — ${extra.name || ''}`;
-    if (mode === 'online')   location = `En Ligne — ${extra.deliveryAddress || ''}`;
+    const location = mode === 'delivery'
+      ? `Livraison — ${extra.address || extra.gpsLink || ''}`
+      : `À Emporter — ${extra.name || ''}`;
 
     const newOrder = {
-      id: orderId,
-      customer: currentCustomer ? currentCustomer.name : (extra.name || `Table ${extra.tableNumber || tableNumber}`),
-      items: cart.map(c => `${c.qty}x ${c.item.name}`).join(', '),
-      total: `${roundedTotal} Dh`,
-      status: 'new',
-      platform: mode === 'online' ? 'En Ligne' : 'Direct',
-      time: 'Maintenant',
+      id:            orderId,
+      customer:      currentCustomer ? currentCustomer.name : (extra.name || 'Client'),
+      items:         cart.map(c => `${c.qty}x ${c.item.name}`).join(', '),
+      total:         `${roundedTotal} DH`,
+      status:        'new',
+      platform:      'Site Web',
+      time:          'Maintenant',
       location,
       paymentMethod,
-      tip: `${tip || 0} Dh`,
-      source: 'frontoffice',
+      tip:           `${tip} DH`,
+      source:        'frontoffice',
       mode,
+      phone:         extra.phone || '',
+      address:       extra.address || '',
+      gpsLink:       extra.gpsLink || '',
+      pickupTime:    extra.pickupTime || '',
     };
 
     setOrdersData(prev => [newOrder, ...prev]);
 
+    // Update customer stats
     if (currentCustomer) {
-      const updatedCustomer = {
+      const updated = {
         ...currentCustomer,
-        points: Math.max(0, (currentCustomer.points || 0) - (pointsUsed || 0)) + pointsEarned,
+        points: Math.max(0, (currentCustomer.points || 0) - pointsUsed) + pointsEarned,
         totalOrders: (currentCustomer.totalOrders || 0) + 1,
-        totalSpent: (currentCustomer.totalSpent || 0) + total,
+        totalSpent:  (currentCustomer.totalSpent  || 0) + roundedTotal,
         orderHistory: [
-          { id: orderId, date: new Date().toLocaleDateString('fr-MA'), total, items: cart.map(c => c.item.name) },
+          {
+            id:    orderId,
+            date:  new Date().toLocaleDateString('fr-MA'),
+            total: roundedTotal,
+            items: cart.map(c => c.item.name),
+            mode,
+          },
           ...(currentCustomer.orderHistory || []),
         ],
       };
-      setCurrentCustomer(updatedCustomer);
-      setFrontCustomers(prev => prev.map(c => c.id === currentCustomer.id ? updatedCustomer : c));
+      setCurrentCustomer(updated);
+      setFrontCustomers(prev => prev.map(c =>
+        c.id === currentCustomer.id ? updated : c
+      ));
     }
 
-    // Store last order info for confirmation page
     setLastOrderId(orderId);
     setLastOrderPoints(pointsEarned);
     setLastOrderTotal(roundedTotal);
+    setLastOrderMode(mode);
 
     clearCart();
+    setOrderMode(null);
     return orderId;
   };
 
-  // ── Shared props (passed to every page) ──────────
+  // ── Shared props ──────────────────────────────────
   const sharedProps = {
     navigate,
     currentCustomer,
@@ -196,72 +218,84 @@ const FrontApp = ({
     removeFromCart,
     updateCartQty,
     clearCart,
-    tableNumber,
-    setTableNumber,
     placeOrder,
-    language,
-    theme,
     isLight,
-    isRTL,
+    theme,
     activeOffers,
     activeDiscount,
     getDiscountedPrice,
-    // Order mode (unified flow)
     orderMode,
     setOrderMode,
-    // Last order (for confirmation)
     lastOrderId,
     lastOrderPoints,
     lastOrderTotal,
+    lastOrderMode,
   };
 
   // ── Page renderer ─────────────────────────────────
   const renderPage = () => {
     switch (page) {
-      case 'home':         return <HomePage {...sharedProps} />;
-      case 'menu':         return <MenuPage {...sharedProps} />;
-      case 'product':      return <ProductPage {...sharedProps} itemId={selectedItemId} />;
-      case 'dine-in':      return <DineInFlow {...sharedProps} />;
-      case 'takeaway':     return <TakeAwayFlow {...sharedProps} />;
-      case 'cart':         return <CartPage {...sharedProps} />;
+      case 'home':         return <HomePage    {...sharedProps} />;
+      case 'menu':         return <MenuPage    {...sharedProps} />;
+      case 'cart':         return <CartPage    {...sharedProps} />;
       case 'checkout':     return <UnifiedCheckout {...sharedProps} />;
       case 'confirmation': return <OrderConfirmation {...sharedProps} />;
       case 'profile':      return <CustomerProfile {...sharedProps} />;
-      default:             return <HomePage {...sharedProps} />;
+      default:             return <HomePage    {...sharedProps} />;
     }
   };
 
-  const pageClass = isLight
-    ? 'min-h-screen bg-gray-50 text-gray-900 font-sans'
-    : 'min-h-screen bg-[#0d0d0d] text-white font-sans';
+  // Pages that should NOT show the BottomNav
+  const hideBottomNav = ['checkout', 'confirmation'].includes(page);
 
   return (
-    <div className={pageClass} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-asaka-900 text-white font-sans antialiased">
+      {/* Desktop-only top navbar */}
       <FrontNavbar
         {...sharedProps}
         currentPage={page}
         onGoToBackoffice={onGoToBackoffice}
-        setLanguage={setLanguage}
-        toggleTheme={toggleTheme}
       />
 
-      <main>
-        {(page === 'home' || page === 'menu') && activeOffers.length > 0 && (
-          <div className="pt-16 sm:pt-20">
-            <OffersBanner offers={activeOffers} navigate={navigate} language={language} theme={theme} />
-          </div>
-        )}
+      {/* Offers banner */}
+      {(page === 'home' || page === 'menu') && activeOffers.length > 0 && (
+        <div className="pt-16 sm:pt-20">
+          <OffersBanner
+            offers={activeOffers}
+            navigate={navigate}
+            theme={theme}
+          />
+        </div>
+      )}
+
+      {/* Main content — bottom padding for BottomNav on mobile */}
+      <main className={!hideBottomNav ? 'pb-20 sm:pb-0' : ''}>
         {renderPage()}
       </main>
 
-      <Footer
-        navigate={navigate}
-        onGoToBackoffice={onGoToBackoffice}
-        language={language}
-        theme={theme}
-        isLight={isLight}
-      />
+      {/* Desktop footer (hidden on mobile to avoid clash with BottomNav) */}
+      {!['checkout', 'confirmation'].includes(page) && (
+        <Footer
+          navigate={navigate}
+          onGoToBackoffice={onGoToBackoffice}
+          isLight={isLight}
+        />
+      )}
 
+      {/* Mobile bottom navigation */}
+      {!hideBottomNav && (
+        <div className="sm:hidden">
+          <BottomNav
+            currentPage={page}
+            navigate={navigate}
+            cartCount={cartCount}
+            currentCustomer={currentCustomer}
+            openAuth={openAuth}
+          />
+        </div>
+      )}
+
+      {/* Auth modal */}
       {showAuth && (
         <CustomerAuth
           mode={authMode}
@@ -270,10 +304,11 @@ const FrontApp = ({
           onSignup={handleSignup}
           onClose={() => setShowAuth(false)}
           frontCustomers={frontCustomers}
-          language={language}
-          theme={theme}
         />
       )}
+
+      {/* Toast notifications */}
+      <ToastContainer />
     </div>
   );
 };

@@ -1,427 +1,599 @@
 import React, { useState } from 'react';
 
-/* ─── Design tokens ─────────────────────────────────────────────────────────── */
-const NAVY  = '#0a1628';
-const BLUE  = '#1565c0';
-const ICE   = '#4fc3f7';
-const GREEN = '#22c55e';
-const AMBER = '#f59e0b';
-const CORAL = '#e74c3c';
-const PURP  = '#a855f7';
-const WHITE = '#f0f8ff';
+/* ─── Tokens ─── */
+const C = {
+  bg:     '#060d18',
+  card:   '#0d1b2a',
+  border: '#1e3a5f',
+  blue:   '#1565c0',
+  ice:    '#4fc3f7',
+  green:  '#22c55e',
+  amber:  '#f59e0b',
+  coral:  '#e74c3c',
+  purp:   '#a855f7',
+  white:  '#f0f8ff',
+  muted:  '#94a3b8',
+  dim:    '#475569',
+  wa:     '#25d366',
+};
 
-/* ─── Reusable atoms ────────────────────────────────────────────────────────── */
-const Tag = ({ color, children }) => (
-  <span style={{ background: color + '22', border: `1px solid ${color}55`, color, borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-    {children}
-  </span>
+/* ─── Atoms ─── */
+const Badge = ({ color, children }) => (
+  <span style={{ background: color+'22', border:`1px solid ${color}55`, color, borderRadius:999, padding:'2px 8px', fontSize:10, fontWeight:800, whiteSpace:'nowrap' }}>{children}</span>
 );
 
-const Card = ({ title, icon, color = ICE, children, badge }) => (
-  <div style={{ background: '#0d1b2a', border: `1px solid ${color}30`, borderRadius: 16, padding: '16px 18px', marginBottom: 12 }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-      <span style={{ fontSize: 20 }}>{icon}</span>
-      <span style={{ color: WHITE, fontWeight: 800, fontSize: 14, flex: 1 }}>{title}</span>
-      {badge && <Tag color={badge === 'NEW' ? GREEN : badge === 'CHANGED' ? ICE : badge === 'VALIDATED' ? GREEN : AMBER}>{badge}</Tag>}
+const Section = ({ title, icon, color=C.ice, badge, children }) => (
+  <div style={{ background:C.card, border:`1px solid ${color}28`, borderRadius:16, padding:'16px 18px', marginBottom:12 }}>
+    <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+      <span style={{ fontSize:18 }}>{icon}</span>
+      <span style={{ color:C.white, fontWeight:800, fontSize:14, flex:1 }}>{title}</span>
+      {badge && <Badge color={badge==='✓'?C.green:badge==='!'?C.amber:C.ice}>{badge==='✓'?'✓ VALIDÉ':badge==='!'?'⏳ PENDING':badge}</Badge>}
     </div>
     {children}
   </div>
 );
 
-const Row = ({ children, gap = 10 }) => (
-  <div style={{ display: 'flex', gap, flexWrap: 'wrap', marginBottom: 8 }}>{children}</div>
-);
+const Row = ({children,gap=8}) => <div style={{display:'flex',gap,flexWrap:'wrap',marginBottom:8}}>{children}</div>;
 
-const Pill = ({ emoji, label, sub, color = ICE }) => (
-  <div style={{ background: color + '15', border: `1px solid ${color}40`, borderRadius: 12, padding: '10px 14px', flex: 1, minWidth: 120 }}>
-    <div style={{ fontSize: 18, marginBottom: 4 }}>{emoji}</div>
-    <div style={{ color: WHITE, fontWeight: 700, fontSize: 12 }}>{label}</div>
-    {sub && <div style={{ color: '#94a3b8', fontSize: 11, marginTop: 2 }}>{sub}</div>}
+const Chip = ({emoji,label,sub,color=C.ice}) => (
+  <div style={{ background:color+'12', border:`1px solid ${color}35`, borderRadius:12, padding:'10px 12px', flex:1, minWidth:110 }}>
+    <div style={{fontSize:17,marginBottom:4}}>{emoji}</div>
+    <div style={{color:C.white,fontWeight:700,fontSize:12}}>{label}</div>
+    {sub&&<div style={{color:C.muted,fontSize:10,marginTop:2}}>{sub}</div>}
   </div>
 );
 
-const Step = ({ n, label, sub, color = ICE, extra }) => (
-  <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-    <div style={{ width: 28, height: 28, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: NAVY, flexShrink: 0, marginTop: 1 }}>{n}</div>
-    <div style={{ flex: 1 }}>
-      <div style={{ color: WHITE, fontWeight: 700, fontSize: 13 }}>{label}</div>
-      {sub && <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 2 }}>{sub}</div>}
-      {extra}
-    </div>
-  </div>
-);
-
-const SubOption = ({ emoji, label, sub, color }) => (
-  <div style={{ background: color + '10', border: `1px solid ${color}30`, borderRadius: 10, padding: '8px 12px', marginTop: 6 }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 16 }}>{emoji}</span>
-      <div>
-        <div style={{ color: WHITE, fontWeight: 700, fontSize: 12 }}>{label}</div>
-        {sub && <div style={{ color: '#94a3b8', fontSize: 11 }}>{sub}</div>}
+const FlowStep = ({n,label,sub,color=C.ice,right,warn}) => (
+  <div style={{display:'flex',gap:12,marginBottom:12,alignItems:'flex-start'}}>
+    <div style={{width:28,height:28,borderRadius:'50%',background:warn?C.amber:color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:900,color:C.bg,flexShrink:0,marginTop:1}}>{n}</div>
+    <div style={{flex:1}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        <span style={{color:C.white,fontWeight:700,fontSize:13}}>{label}</span>
+        {right&&<Badge color={C.green}>{right}</Badge>}
+        {warn&&<Badge color={C.amber}>{warn}</Badge>}
       </div>
+      {sub&&<div style={{color:C.muted,fontSize:12,marginTop:3,lineHeight:1.5}}>{sub}</div>}
     </div>
   </div>
 );
 
-const Idea = ({ emoji, text, type = 'idea' }) => (
+const Note = ({emoji,text,type='idea'}) => (
   <div style={{
-    display: 'flex', gap: 8, alignItems: 'flex-start',
-    background: type === 'add' ? GREEN + '10' : type === 'warn' ? AMBER + '10' : PURP + '10',
-    border: `1px solid ${type === 'add' ? GREEN : type === 'warn' ? AMBER : PURP}30`,
-    borderRadius: 10, padding: '8px 12px', marginBottom: 8
+    display:'flex',gap:8,alignItems:'flex-start',marginBottom:8,
+    background:type==='ok'?C.green+'10':type==='security'?C.coral+'10':type==='idea'?C.purp+'10':C.amber+'10',
+    border:`1px solid ${type==='ok'?C.green:type==='security'?C.coral:type==='idea'?C.purp:C.amber}30`,
+    borderRadius:10,padding:'8px 12px'
   }}>
-    <span style={{ fontSize: 15, flexShrink: 0 }}>{emoji}</span>
-    <span style={{ color: '#cbd5e1', fontSize: 12, lineHeight: 1.5 }}>{text}</span>
+    <span style={{fontSize:14,flexShrink:0}}>{emoji}</span>
+    <span style={{color:'#cbd5e1',fontSize:12,lineHeight:1.5}}>{text}</span>
   </div>
 );
 
-const Divider = ({ label }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 10px' }}>
-    <div style={{ flex: 1, height: 1, background: '#1e3a5f' }} />
-    <span style={{ color: '#4fc3f7', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</span>
-    <div style={{ flex: 1, height: 1, background: '#1e3a5f' }} />
+const Arrow = ({color=C.dim}) => (
+  <div style={{textAlign:'center',color,fontSize:20,margin:'-4px 0',lineHeight:1}}>↓</div>
+);
+
+const TwoCol = ({left,right}) => (
+  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:8}}>{left}{right}</div>
+);
+
+const Box = ({label,sub,color=C.ice,emoji}) => (
+  <div style={{background:color+'12',border:`1px solid ${color}30`,borderRadius:10,padding:'10px 12px'}}>
+    {emoji&&<div style={{fontSize:16,marginBottom:4}}>{emoji}</div>}
+    <div style={{color:C.white,fontWeight:700,fontSize:12}}>{label}</div>
+    {sub&&<div style={{color:C.muted,fontSize:11,marginTop:2}}>{sub}</div>}
   </div>
 );
 
-/* ─── Main component ────────────────────────────────────────────────────────── */
+/* ─── Main ─── */
 export default function AsakaSchema() {
-  const [tab, setTab] = useState('order');
+  const [tab,setTab] = useState('chartflow');
 
   const tabs = [
-    { id: 'order',    label: '🛒 Flux Commande', validated: true },
-    { id: 'overview', label: '🗺 Vue Globale' },
-    { id: 'design',   label: '🎨 Design' },
-    { id: 'pending',  label: '📋 À Valider' },
+    {id:'chartflow', label:'🗺 Chartflow Complet'},
+    {id:'validated', label:'✅ Tout Validé'},
+    {id:'security',  label:'🔒 Sécurité'},
+    {id:'stack',     label:'⚙️ Stack & Libs'},
+    {id:'start',     label:'🚀 Prêt à Démarrer'},
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: NAVY, fontFamily: 'Inter, system-ui, sans-serif', color: WHITE, paddingBottom: 60 }}>
+    <div style={{minHeight:'100vh',background:C.bg,fontFamily:'Inter,system-ui,sans-serif',color:C.white,paddingBottom:60}}>
 
-      {/* ── Header ── */}
-      <div style={{ background: '#060d18', borderBottom: '1px solid #1e3a5f', padding: '18px 20px 14px' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{ width: 42, height: 42, borderRadius: '50%', background: `linear-gradient(135deg, ${BLUE}, ${ICE})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🍱</div>
+      {/* Header */}
+      <div style={{background:'#030810',borderBottom:`1px solid ${C.border}`,padding:'16px 18px 12px'}}>
+        <div style={{maxWidth:760,margin:'0 auto'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+            <div style={{width:40,height:40,borderRadius:'50%',background:`linear-gradient(135deg,${C.blue},${C.ice})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🍱</div>
             <div>
-              <div style={{ fontWeight: 900, fontSize: 18 }}>
-                <span style={{ color: ICE }}>Asaka</span><span style={{ color: WHITE }}> Sushi</span>
-                <span style={{ color: '#475569', fontWeight: 400, fontSize: 13 }}> — Plan de refonte</span>
-              </div>
-              <div style={{ color: '#475569', fontSize: 11 }}>Validez section par section avant implémentation</div>
+              <div style={{fontWeight:900,fontSize:17}}><span style={{color:C.ice}}>Asaka</span><span style={{color:C.white}}> Sushi</span><span style={{color:C.dim,fontWeight:400,fontSize:12}}> — Plan Final · v3</span></div>
+              <div style={{color:C.dim,fontSize:11}}>Toutes les sections validées · Prêt à coder</div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {tabs.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                background: tab === t.id ? BLUE : 'transparent',
-                border: `1px solid ${tab === t.id ? BLUE : '#1e3a5f'}`,
-                color: tab === t.id ? WHITE : '#64748b',
-                borderRadius: 999, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 5,
-              }}>
-                {t.label}
-                {t.validated && <span style={{ background: GREEN, color: '#052e16', borderRadius: 999, fontSize: 9, fontWeight: 900, padding: '1px 6px' }}>✓ VALIDÉ</span>}
-              </button>
+          <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+            {tabs.map(t=>(
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{
+                background:tab===t.id?C.blue:'transparent',
+                border:`1px solid ${tab===t.id?C.blue:C.border}`,
+                color:tab===t.id?C.white:C.dim,
+                borderRadius:999,padding:'4px 12px',fontSize:11,fontWeight:700,cursor:'pointer'
+              }}>{t.label}</button>
             ))}
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 14px 0' }}>
+      <div style={{maxWidth:760,margin:'0 auto',padding:'20px 14px 0'}}>
 
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {/* ORDER FLOW TAB — VALIDATED BY CLIENT                              */}
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {tab === 'order' && (
+        {/* ══════════ CHARTFLOW ══════════ */}
+        {tab==='chartflow'&&(
           <div>
-            {/* Validation banner */}
-            <div style={{ background: GREEN + '15', border: `1px solid ${GREEN}40`, borderRadius: 14, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <span style={{ fontSize: 20 }}>✅</span>
-              <div>
-                <div style={{ color: GREEN, fontWeight: 800, fontSize: 13 }}>Flux validé par le client</div>
-                <div style={{ color: '#86efac', fontSize: 12, marginTop: 2 }}>
-                  Le schéma ci-dessous intègre votre description exacte + mes suggestions d'amélioration (en violet).
+            <div style={{color:C.muted,fontSize:12,marginBottom:16}}>Architecture complète — de l'entrée sur le site à la livraison, en passant par chaque décision.</div>
+
+            {/* ── ENTRY ── */}
+            <Section title="① ENTRÉE — Page d'accueil" icon="🏠" color={C.ice} badge="✓">
+              <div style={{background:'#030810',border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:8}}>
+                <div style={{color:C.ice,fontWeight:800,fontSize:12,marginBottom:10}}>Ce que le client voit en premier (above the fold)</div>
+                <div style={{textAlign:'center',padding:'16px 0'}}>
+                  <div style={{display:'inline-block',background:`linear-gradient(135deg,${C.blue}33,${C.ice}11)`,border:`2px solid ${C.ice}40`,borderRadius:20,padding:'20px 32px',marginBottom:12}}>
+                    <div style={{fontSize:32,marginBottom:6}}>🍱</div>
+                    <div style={{color:C.ice,fontWeight:900,fontSize:20,letterSpacing:-0.5}}>ASAKA SUSHI</div>
+                    <div style={{color:C.muted,fontSize:12,marginBottom:16}}>Tagline courte · Casablanca</div>
+                    <div style={{display:'flex',gap:10,justifyContent:'center'}}>
+                      <div style={{background:C.green,color:C.bg,borderRadius:10,padding:'10px 20px',fontWeight:800,fontSize:13}}>🥡 À Emporter</div>
+                      <div style={{background:C.blue,color:C.white,borderRadius:10,padding:'10px 20px',fontWeight:800,fontSize:13}}>🛵 Livraison</div>
+                    </div>
+                  </div>
+                  <div style={{color:C.muted,fontSize:11}}>Animation 3D scroll-triggered · Fond animé · Particules japonaises</div>
                 </div>
               </div>
-            </div>
+              <Note emoji="🎨" text="Design Apple-like : scroll déclenche des animations, éléments 3D (Three.js/Spline), parallax. Refs : sugarfishsushi.com + sushi-rei.jp" type="idea"/>
+              <Note emoji="📸" text="Section owner/influencer : courte bio + photo Instagram du propriétaire. Ajoutée après le hero." type="ok"/>
+              <Note emoji="📍" text="Horaires ouverture + bouton compact Google Maps (pas d'iframe). WhatsApp direct pour contact." type="ok"/>
+            </Section>
 
-            {/* ── ENTRY POINT ── */}
-            <Card title="Étape 0 — Entrée sur le site" icon="🏠" color={ICE}>
-              <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 10 }}>
-                Le client arrive et voit <strong style={{ color: WHITE }}>immédiatement</strong> les 2 options de commande en hero — avant même de scroller.
-              </div>
-              <Row>
-                <Pill emoji="🥡" label="À Emporter" sub="Click & Collect" color={GREEN} />
-                <Pill emoji="🛵" label="Livraison" sub="À domicile" color={ICE} />
-              </Row>
-              <Idea emoji="💡" text="Idée : Afficher sous ces 2 boutons → 'Ouvert jusqu'à 23h · ~20 min de préparation' pour rassurer le client dès l'entrée." />
-            </Card>
+            <Arrow />
 
             {/* ── BROWSE ── */}
-            <Card title="Étape 1 — Découvrir le restaurant & le menu" icon="🍣" color={ICE}>
-              <Step n="A" label="Section 'Qui sommes-nous ?' (courte)" sub="Photo, nom, tagline — pas de longue histoire. 3 lignes max." color={ICE} />
-              <Step n="B" label="Menu par catégories" sub="Rolls · Sashimi · Chirashi · Spécialités · Boissons — tabs scrollables" color={ICE} />
-              <Step n="C" label="Ajouter au panier" sub="Bouton + direct sur la carte, pas besoin de changer de page" color={ICE} />
-              <Idea emoji="💡" text="Idée : Un compteur flottant (bottom-right) affiche le nombre d'articles + total au fur et à mesure que le client ajoute — visible sans aller dans le panier." />
-              <Idea emoji="💡" text="Idée : Tap sur une carte article → bottom sheet (panneau qui glisse du bas) avec photo/emoji, description, quantité — sans quitter le menu." />
-            </Card>
+            <Section title="② MENU — Parcourir & Ajouter" icon="🍣" color={C.ice} badge="✓">
+              <FlowStep n="A" label="Tabs catégories sticky" sub="Rolls · Sashimi · Chirashi · Spécialités · Boissons — scroll horizontal sur mobile" color={C.ice}/>
+              <FlowStep n="B" label="Affichage au choix du client" sub="3 modes : Grille 2-col / Liste / Cards horizontales — préférence sauvegardée" color={C.ice}/>
+              <FlowStep n="C" label="Barre de recherche" sub="Cliquée → suggestions de produits à la une (configurés en backoffice). Recherche live par nom." color={C.ice}/>
+              <FlowStep n="D" label="Tap article → Bottom Sheet popup" sub="Photo HD + nom + ingrédients (backoffice) + prix + quantité + Ajouter au panier. Sans quitter le menu." color={C.ice}/>
+              <FlowStep n="E" label="FAB panier flottant" sub="Bas de l'écran : 🛒 3 articles · 255 Dh → Voir panier. Visible en permanence si panier non vide." color={C.green}/>
+              <Note emoji="🔥" text="Badges 'Populaire' et 'Nouveau' sur les cards — gérés depuis le backoffice par article." type="ok"/>
+              <Note emoji="🔍" text="Produits mis en avant dans la recherche = configurables en backoffice (ex: mettre le plat du jour)." type="ok"/>
+            </Section>
+
+            <Arrow />
 
             {/* ── CART ── */}
-            <Card title="Étape 2 — Panier" icon="🛒" color={AMBER}>
-              <Step n="1" label="Liste des articles" sub="Avec +/- pour modifier les quantités, et supprimer" color={AMBER} />
-              <Step n="2" label="Sous-total + Tip" sub="Le pourboire est proposé ici : 0 / 10% / 15% / 20% / Personnalisé" color={AMBER} />
-              <Step n="3" label="Total final affiché clairement" color={AMBER} />
-              <Step n="4" label="Choix du mode de livraison" sub="À Emporter OU Livraison — le client choisit ici" color={AMBER} />
-            </Card>
+            <Section title="③ PANIER" icon="🛒" color={C.amber} badge="✓">
+              <FlowStep n="1" label="Liste articles" sub="+/- quantités · Supprimer · Sous-total par article" color={C.amber}/>
+              <FlowStep n="2" label="Choix du mode" sub="À Emporter OU Livraison (2 options seulement)" color={C.amber}/>
+              <FlowStep n="3" label="Tip" sub="Préselection : 0% / 10% / 15% / 20% / Montant libre" color={C.amber}/>
+              <FlowStep n="4" label="Total final" sub="Sous-total + Tip + Frais livraison (si livraison)" color={C.amber}/>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,margin:'8px 0'}}>
+                <Box emoji="🥡" label="À Emporter" sub="→ Formulaire Emporter" color={C.green}/>
+                <Box emoji="🛵" label="Livraison" sub="→ Formulaire Livraison" color={C.ice}/>
+              </div>
+            </Section>
+
+            <Arrow />
 
             {/* ── CHECKOUT ── */}
-            <Card title="Étape 3 — Checkout (formulaire selon le mode)" icon="📝" color={PURP}>
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ color: ICE, fontWeight: 800, fontSize: 13, marginBottom: 8 }}>🥡 Si À Emporter :</div>
-                {['Nom complet', 'Numéro de téléphone', 'Heure de récupération souhaitée (créneau)', 'Récapitulatif : articles + total + tip'].map((f, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: GREEN + '30', border: `1px solid ${GREEN}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: GREEN, flexShrink: 0 }}>✓</div>
-                    <span style={{ color: '#cbd5e1', fontSize: 12 }}>{f}</span>
+            <Section title="④ CHECKOUT — Formulaire & Compte" icon="📝" color={C.purp} badge="✓">
+
+              {/* Account decision */}
+              <div style={{background:'#0d0820',border:`1px solid ${C.purp}40`,borderRadius:12,padding:14,marginBottom:12}}>
+                <div style={{color:C.purp,fontWeight:800,fontSize:12,marginBottom:10}}>🔐 Connexion — Optionnelle mais incitative</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                  <Box emoji="👤" label="Avec compte" sub="Infos pré-remplies automatiquement. Discount actif. Points gagnés." color={C.green}/>
+                  <Box emoji="🚶" label="Sans compte" sub="Formulaire manuel. Pas de points. Invitation à créer un compte à la fin." color={C.amber}/>
+                </div>
+                <Note emoji="🎁" text="Message affiché : 'Créez un compte gratuit et bénéficiez de X% de réduction + gagnez des points à chaque commande' — le % est configurable depuis le backoffice." type="ok"/>
+              </div>
+
+              {/* Takeaway form */}
+              <div style={{marginBottom:12}}>
+                <div style={{color:C.green,fontWeight:800,fontSize:12,marginBottom:8}}>🥡 Formulaire À Emporter</div>
+                {['Nom complet *','Numéro de téléphone *','Créneau de récupération (liste déroulante) *','Récapitulatif : articles + sous-total + tip + total'].map((f,i)=>(
+                  <div key={i} style={{display:'flex',gap:8,alignItems:'center',marginBottom:5}}>
+                    <span style={{color:C.green,fontSize:11}}>→</span>
+                    <span style={{color:'#cbd5e1',fontSize:12}}>{f}</span>
                   </div>
                 ))}
               </div>
 
+              {/* Delivery form */}
               <div>
-                <div style={{ color: ICE, fontWeight: 800, fontSize: 13, marginBottom: 8 }}>🛵 Si Livraison :</div>
+                <div style={{color:C.ice,fontWeight:800,fontSize:12,marginBottom:8}}>🛵 Formulaire Livraison</div>
                 {[
-                  'Nom complet',
-                  'Numéro de téléphone',
-                  'Adresse complète (saisie manuelle)',
-                  'OU Localisation GPS → lien Google Maps généré automatiquement',
-                  'Créneau de livraison souhaité',
-                  'Récapitulatif : articles + total + tip + frais de livraison',
-                ].map((f, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: ICE + '30', border: `1px solid ${ICE}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: ICE, flexShrink: 0 }}>✓</div>
-                    <span style={{ color: '#cbd5e1', fontSize: 12 }}>{f}</span>
+                  'Nom complet *',
+                  'Numéro de téléphone *',
+                  'Adresse complète (saisie texte)',
+                  'OU bouton GPS → génère lien maps.google.com/?q=LAT,LNG (sauvegardé avec la commande)',
+                  'Créneau de livraison *',
+                  'Récapitulatif : articles + frais livraison + tip + total',
+                ].map((f,i)=>(
+                  <div key={i} style={{display:'flex',gap:8,alignItems:'flex-start',marginBottom:5}}>
+                    <span style={{color:C.ice,fontSize:11,marginTop:2}}>→</span>
+                    <span style={{color:'#cbd5e1',fontSize:12}}>{f}</span>
                   </div>
                 ))}
-                <Idea emoji="📍" text="GPS : le bouton 'Utiliser ma position' demande la permission au navigateur → récupère lat/lng → génère un lien Google Maps format https://maps.google.com/?q=LAT,LNG que le livreur peut ouvrir directement sur son téléphone." type="add" />
-                <Idea emoji="👤" text="Si le client est connecté → ses infos (nom, tel, adresse) sont pré-remplies. Il ne tape rien." type="add" />
+                <Note emoji="📍" text="Lien GPS format Google Maps → enregistré dans la commande. Le livreur l'ouvre directement depuis le backoffice ou son téléphone." type="ok"/>
               </div>
-            </Card>
+
+              {/* Security note */}
+              <Note emoji="🔒" text="SÉCURITÉ : Tous les champs sont validés côté frontend ET sanitisés côté backend. Rate limiting sur la soumission du formulaire. Voir onglet Sécurité." type="security"/>
+            </Section>
+
+            <Arrow />
 
             {/* ── CONFIRMATION CHOICE ── */}
-            <Card title="Étape 4 — Choix de confirmation" icon="✅" color={GREEN}>
-              <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 12 }}>
-                Après avoir rempli le formulaire, le client choisit comment confirmer sa commande :
+            <Section title="⑤ CONFIRMATION — WhatsApp ou Site" icon="✅" color={C.wa} badge="✓">
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                <div style={{background:C.wa+'10',border:`1px solid ${C.wa}30`,borderRadius:12,padding:12}}>
+                  <div style={{fontSize:18,marginBottom:6}}>💬</div>
+                  <div style={{color:C.white,fontWeight:800,fontSize:12,marginBottom:4}}>Via WhatsApp</div>
+                  <div style={{color:C.muted,fontSize:11}}>Popup avec aperçu du message. Bouton "Ouvrir WhatsApp". Client envoie. Restaurant répond.</div>
+                </div>
+                <div style={{background:C.blue+'15',border:`1px solid ${C.blue}30`,borderRadius:12,padding:12}}>
+                  <div style={{fontSize:18,marginBottom:6}}>🌐</div>
+                  <div style={{color:C.white,fontWeight:800,fontSize:12,marginBottom:4}}>Via le Site</div>
+                  <div style={{color:C.muted,fontSize:11}}>Commande enregistrée directement. Restaurant voit en backoffice. Rappel/SMS pour confirmer.</div>
+                </div>
               </div>
+              <Note emoji="💬" text="Message WA pré-rempli : nom + mode + articles + total + tip + créneau + lien GPS (si livraison)." type="ok"/>
+              <Note emoji="⏱️" text="Après confirmation site : compte à rebours estimé affiché (ex: 'Prêt dans ~25 min'). Délai configurable depuis le backoffice, ou auto-calculé selon les produits (à définir en backoffice v2)." type="ok"/>
+            </Section>
 
-              <Step n="A" label="Confirmer via WhatsApp" color="#25d366"
-                sub="Un popup s'ouvre avec un aperçu du message pré-rempli. Bouton 'Ouvrir WhatsApp' → l'app WA s'ouvre avec tout rempli. Le client envoie et la commande est confirmée."
-                extra={
-                  <div style={{ background: '#0a2010', border: '1px solid #25d36633', borderRadius: 10, padding: 10, marginTop: 8, fontFamily: 'monospace', fontSize: 11, color: '#a7f3d0', lineHeight: 1.8 }}>
-                    🍱 *Commande Asaka Sushi*{'\n'}
-                    👤 Ahmed Benali · 📞 0612345678{'\n'}
-                    🥡 À Emporter · ⏰ 14h30{'\n'}
-                    ─────────────────{'\n'}
-                    • 2× Salmon Roll — 80 Dh{'\n'}
-                    • 1× Chirashi — 95 Dh{'\n'}
-                    ─────────────────{'\n'}
-                    💰 Total : 175 Dh · Tip : 20 Dh{'\n'}
-                    ✅ En attente de confirmation
-                  </div>
-                }
-              />
-
-              <Step n="B" label="Confirmer via le site" color={ICE}
-                sub="Le client appuie sur 'Passer la commande' directement. La commande est enregistrée en base. Le restaurant la voit en backoffice et rappelle / SMS pour confirmer."
-              />
-
-              <Idea emoji="💡" text="Idée : Après confirmation via le site, afficher un compte à rebours estimé ('Votre commande sera prête dans ~25 min') pour rassurer le client sans qu'il ait besoin d'appeler." type="add" />
-              <Idea emoji="📞" text="Idée : Bouton 'Appeler le restaurant' en bas de la page confirmation — pour les clients qui préfèrent parler à quelqu'un." type="add" />
-            </Card>
+            <Arrow />
 
             {/* ── POST ORDER ── */}
-            <Card title="Étape 5 — Après la commande" icon="🎉" color={AMBER}>
-              <Step n="1" label="Page de confirmation animée" sub="Animation succès (checkmark) + Numéro de commande + Récapitulatif" color={AMBER} />
-              <Step n="2" label="Statut de la commande (timeline)" color={AMBER}
-                extra={
-                  <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                    {['Reçue', 'Confirmée', 'En préparation', 'Prête / En route', 'Livrée ✓'].map((s, i) => (
-                      <div key={i} style={{ background: i === 0 ? AMBER + '30' : '#1e3a5f', border: `1px solid ${i === 0 ? AMBER : '#2d4a6a'}`, borderRadius: 999, padding: '3px 10px', fontSize: 11, color: i === 0 ? AMBER : '#64748b' }}>{s}</div>
-                    ))}
-                  </div>
-                }
+            <Section title="⑥ POST-COMMANDE — Suivi & Avis" icon="🎉" color={C.amber} badge="✓">
+              <FlowStep n="1" label="Page confirmation animée" sub="Animation checkmark 3D · Numéro commande · Récapitulatif · Confettis" color={C.amber}/>
+
+              <FlowStep n="2" label="Timeline de statut (connectée au backoffice)" color={C.amber}
+                sub=""
               />
-              <Step n="3" label="Formulaire d'avis (selon votre demande)" color={AMBER}
-                sub="Affiché directement sous la confirmation — étoiles 1-5 + commentaire libre + option d'envoyer l'avis sur Google aussi."
-              />
-              <Step n="4" label="Bouton 'Commander à nouveau'" sub="Remet les mêmes articles dans le panier en 1 tap" color={AMBER} />
-              <Idea emoji="⭐" text="Le formulaire d'avis ne s'affiche QUE pour les commandes livrées/récupérées — pas immédiatement après confirmation. Une notification discrète apparaît après ~30 min ('Comment s'est passée votre commande ?')." type="add" />
-              <Idea emoji="📬" text="Idée : Bouton 'Contact restaurant' en bas — ouvre un petit formulaire (ou WhatsApp) pour questions/réclamations." type="add" />
-            </Card>
-
-            {/* ── SUMMARY ── */}
-            <div style={{ background: `linear-gradient(135deg, ${BLUE}22, ${ICE}11)`, border: `1px solid ${ICE}30`, borderRadius: 16, padding: 18, marginTop: 4 }}>
-              <div style={{ fontWeight: 800, fontSize: 14, color: ICE, marginBottom: 14 }}>📊 Résumé du flux en 5 étapes</div>
-              {[
-                { n: '0', label: 'Entrée', detail: 'Hero : 2 boutons (Emporter / Livraison)', color: ICE },
-                { n: '1', label: 'Browse', detail: 'Restaurant info → Menu → Add to cart', color: ICE },
-                { n: '2', label: 'Panier', detail: 'Articles + Tip + Choix du mode', color: AMBER },
-                { n: '3', label: 'Checkout', detail: 'Formulaire adapté au mode choisi + GPS si livraison', color: PURP },
-                { n: '4', label: 'Confirmation', detail: 'WhatsApp popup OU site direct', color: GREEN },
-                { n: '5', label: 'Post-commande', detail: 'Animation + statut + avis + recommander', color: AMBER },
-              ].map(s => (
-                <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: NAVY, flexShrink: 0 }}>{s.n}</div>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ color: WHITE, fontWeight: 700, fontSize: 13 }}>{s.label} </span>
-                    <span style={{ color: '#64748b', fontSize: 12 }}>— {s.detail}</span>
-                  </div>
+              <div style={{background:'#0d0a02',border:`1px solid ${C.amber}30`,borderRadius:10,padding:'10px 14px',marginBottom:12,marginLeft:40}}>
+                <div style={{display:'flex',gap:0,alignItems:'center',flexWrap:'wrap'}}>
+                  {['📥 Reçue','✅ Acceptée','👨‍🍳 En préparation','📦 Prête / En route','🎉 Livrée'].map((s,i,arr)=>(
+                    <React.Fragment key={i}>
+                      <div style={{background:i===0?C.amber+'30':'#1e3a5f',border:`1px solid ${i===0?C.amber:'#2d4a6a'}`,borderRadius:999,padding:'3px 10px',fontSize:10,color:i===0?C.amber:'#475569',whiteSpace:'nowrap'}}>{s}</div>
+                      {i<arr.length-1&&<div style={{color:'#1e3a5f',fontSize:12,margin:'0 2px'}}>→</div>}
+                    </React.Fragment>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+                <div style={{color:C.muted,fontSize:11,marginTop:6}}>→ Chaque étape est cliquée par le staff depuis le backoffice (réception → cuisine → livreur → livré). Le client voit l'avancement en temps réel sur sa page.</div>
+              </div>
 
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {/* OVERVIEW TAB                                                      */}
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {tab === 'overview' && (
-          <div>
-            <Card title="Sections du site (dans l'ordre de scroll)" icon="📜" color={ICE}>
-              {[
-                { n: 1, name: 'Hero / Accueil', desc: '2 gros boutons Emporter + Livraison · Statut ouvert/fermé · Temps estimé', status: '⏳ À valider' },
-                { n: 2, name: 'Qui sommes-nous', desc: 'Court : logo Asaka + 2-3 lignes + bouton Google Maps compact', status: '⏳ À valider' },
-                { n: 3, name: 'Menu', desc: 'Tabs catégories · Cartes produits · Bottom sheet détail · FAB panier', status: '⏳ À valider' },
-                { n: 4, name: 'Comment ça marche', desc: '3 steps : Choisir → Confirmer → Recevoir (illustration simple)', status: '⏳ À valider' },
-                { n: 5, name: 'Avis clients', desc: 'Mini-carrousel de témoignages + note Google + lien laisser un avis', status: '⏳ À valider' },
-                { n: 6, name: 'Contact / Footer', desc: 'Téléphone + WhatsApp + Réseaux sociaux + Horaires · Compact', status: '⏳ À valider' },
-              ].map(s => (
-                <div key={s.n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #1e3a5f' }}>
-                  <div style={{ width: 26, height: 26, borderRadius: 8, background: ICE + '20', border: `1px solid ${ICE}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: ICE, flexShrink: 0 }}>{s.n}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ color: WHITE, fontWeight: 700, fontSize: 13 }}>{s.name}</div>
-                    <div style={{ color: '#94a3b8', fontSize: 12 }}>{s.desc}</div>
-                  </div>
-                  <Tag color={AMBER}>{s.status}</Tag>
-                </div>
-              ))}
-            </Card>
+              <FlowStep n="3" label="Bouton 'Appeler le restaurant'" sub="Affiché en permanence sur la page confirmation — pour les clients qui veulent parler." color={C.amber}/>
+              <FlowStep n="4" label="Formulaire Avis (déclenché après délai)" sub="★★★★★ · Commentaire libre · Photo uploadable · Envoyer sur Google aussi (optionnel). Avis soumis → en attente de validation backoffice avant publication." color={C.amber}/>
+              <FlowStep n="5" label="Crédits/Points pour avis" sub="Soumettre un avis valide = X points bonus. Configuré en backoffice." color={C.green}/>
+              <FlowStep n="6" label="Bouton 'Commander à nouveau'" sub="Remet les mêmes articles dans le panier en 1 tap." color={C.ice}/>
+              <FlowStep n="7" label="Bouton 'Contact / Question'" sub="Ouvre WhatsApp direct avec message pré-rempli 'J\'ai une question sur ma commande #XXXX'." color={C.wa}/>
+              <Note emoji="👤" text="Si pas de compte : nudge discret 'Créez un compte pour retrouver vos commandes et gagner des points' avec bouton inscription." type="ok"/>
+            </Section>
 
-            <Card title="Ce qu'on supprime définitivement" icon="🗑️" color={CORAL}>
-              {['Dine-In / Sur Place (supprimé du flow)', 'Carte Google Maps en iframe plein écran', 'Timeline "Notre Histoire" longue', 'Footer lourd multi-colonnes', 'Couleurs oranges (remplacées par bleu)'].map((x, i) => (
-                <div key={i} style={{ color: '#fca5a5', fontSize: 12, marginBottom: 6, display: 'flex', gap: 8 }}>
-                  <span>❌</span><span>{x}</span>
-                </div>
-              ))}
-            </Card>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {/* DESIGN TAB                                                        */}
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {tab === 'design' && (
-          <div>
-            <Card title="Palette — inspirée du logo Asaka" icon="🎨" color={ICE}>
-              {[
-                { name: 'Fond principal',   hex: '#060d18', role: 'Background global' },
-                { name: 'Fond carte',       hex: '#0d1b2a', role: 'Cards, sections' },
-                { name: 'Séparateurs',      hex: '#1e3a5f', role: 'Borders, dividers' },
-                { name: 'Bouton primaire',  hex: '#1565c0', role: 'CTA principal' },
-                { name: 'Ice Blue',         hex: '#4fc3f7', role: 'Accents, highlights' },
-                { name: 'Texte principal',  hex: '#f0f8ff', role: 'Titres, labels' },
-                { name: 'Texte secondaire', hex: '#94a3b8', role: 'Descriptions' },
-                { name: 'Succès / Emporter', hex: '#22c55e', role: 'Take Away mode' },
-                { name: 'Coral (badge hot)', hex: '#e74c3c', role: 'Promos, urgent' },
-              ].map(c => (
-                <div key={c.hex} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 8, background: c.hex, border: '1px solid #1e3a5f', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ color: WHITE, fontWeight: 700, fontSize: 12 }}>{c.name}</div>
-                    <div style={{ color: '#64748b', fontSize: 11 }}>{c.hex} · {c.role}</div>
-                  </div>
-                </div>
-              ))}
-            </Card>
-
-            <Card title="Navigation mobile (Bottom Bar)" icon="📱" color={PURP}>
-              <Row gap={8}>
-                <Pill emoji="🏠" label="Accueil" color={ICE} />
-                <Pill emoji="🍱" label="Menu" color={ICE} />
-                <Pill emoji="🛒" label="Panier" sub="Badge count" color={GREEN} />
-                <Pill emoji="👤" label="Profil" color={PURP} />
+            {/* ── ACCOUNT ── */}
+            <div style={{height:1,background:C.border,margin:'16px 0'}}/>
+            <Section title="COMPTE CLIENT — Fidélité & Badges" icon="👤" color={C.purp} badge="✓">
+              <Row>
+                <Chip emoji="🥉" label="Bronze" sub="1–9 commandes" color="#cd7f32"/>
+                <Chip emoji="🥈" label="Argent" sub="10–24 commandes" color={C.muted}/>
+                <Chip emoji="🥇" label="Or" sub="25+ commandes" color={C.amber}/>
               </Row>
-              <div style={{ color: '#94a3b8', fontSize: 12 }}>Barre fixe en bas — navigation au pouce, naturelle sur mobile.</div>
-            </Card>
+              <Note emoji="💎" text="Points : 1 Dh dépensé = 1 point. 100 pts = discount X Dh. Le ratio et la valeur du point sont configurables en backoffice." type="ok"/>
+              <Note emoji="🎁" text="Avantages niveaux : configurables en backoffice. Exemple : Or → livraison gratuite / Argent → -5% / Bronze → accès early à nouveautés." type="ok"/>
+              <Note emoji="⭐" text="Soumettre un avis vérifié = points bonus (montant configurable en backoffice)." type="ok"/>
+              <Note emoji="❤️" text="Favoris : marquer des articles. Ré-ordre rapide depuis l'historique." type="ok"/>
+            </Section>
+
+            {/* ── AVIS ── */}
+            <Section title="AVIS CLIENTS — Section Dédiée" icon="⭐" color={C.amber} badge="✓">
+              <Note emoji="📸" text="Le client upload photo + commentaire + note étoiles. Soumis → en attente validation backoffice. Validé → publié sur le site." type="ok"/>
+              <Note emoji="🏆" text="Page dédiée aux avis : tous les avis acceptés, avec photo du plat/client, note, prénom. Style Instagram/testimonial." type="ok"/>
+              <Note emoji="🔗" text="Bouton 'Laisser un avis Google' sur la page d'accueil (SocialSection) et sur la page confirmation." type="ok"/>
+              <Note emoji="💰" text="Avis validé → X points crédités automatiquement sur le compte. Configurable en backoffice." type="ok"/>
+            </Section>
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {/* PENDING TAB — what remains to validate                           */}
-        {/* ══════════════════════════════════════════════════════════════════ */}
-        {tab === 'pending' && (
+        {/* ══════════ VALIDATED ══════════ */}
+        {tab==='validated'&&(
           <div>
-            <div style={{ background: AMBER + '15', border: `1px solid ${AMBER}40`, borderRadius: 14, padding: '12px 16px', marginBottom: 20 }}>
-              <div style={{ color: AMBER, fontWeight: 800, fontSize: 13 }}>⏳ Sections encore à valider avec vous</div>
-              <div style={{ color: '#fde68a', fontSize: 12, marginTop: 4 }}>Expliquez chaque section comme vous avez fait pour la commande — je mets à jour le plan et on continue.</div>
-            </div>
+            <Note emoji="✅" text="Toutes les sections sont maintenant validées par le client. Ce tableau récapitule chaque décision." type="ok"/>
 
             {[
               {
-                id: '01', icon: '🏠', title: 'Page d\'accueil (Hero + sections)',
-                questions: [
-                  'Que voulez-vous que le client voie en PREMIER au-dessus de la ligne de flottaison ?',
-                  'Voulez-vous une photo du restaurant ou rester sur fond sombre + animations ?',
-                  'Section "Qui sommes-nous" : courte biographie + horaires ou juste le nom + localisation ?',
-                  'Voulez-vous une section "Comment commander" avec 3 étapes illustrées ?',
-                ],
+                topic:'Design global',color:C.ice,
+                items:[
+                  'Branding : Asaka Sushi (logo fourni)',
+                  'Palette : bleu marine profond → ice blue (inspiré logo)',
+                  'Style : Apple-like, scroll animé, 3D, immersif',
+                  'Références : sugarfishsushi.com + sushi-rei.jp/en',
+                  'Navigation mobile : Bottom Bar (4 icônes)',
+                  'Mode sombre par défaut',
+                ]
               },
               {
-                id: '02', icon: '🍱', title: 'Page Menu',
-                questions: [
-                  'Comment voulez-vous afficher les articles : grille 2 colonnes, liste 1 colonne, ou cards horizontales ?',
-                  'Voulez-vous des photos réelles pour les articles, ou garder les emojis/illustrations ?',
-                  'Tap sur un article : nouvelle page, popup (bottom sheet), ou rien (juste add to cart) ?',
-                  'Voulez-vous un moteur de recherche dans le menu ?',
-                ],
+                topic:'Page Accueil',color:C.ice,
+                items:[
+                  'Hero : nom restaurant + 2 CTA (Emporter / Livraison)',
+                  'Fond animé avec particules japonaises (pas de photo statique)',
+                  'Section bio courte + photo propriétaire (influencer Instagram)',
+                  'Section "Comment ça marche" : 3 étapes, style japonais illustré',
+                  'Horaires en page d\'accueil',
+                  'Bouton compact Google Maps (pas d\'iframe)',
+                  'WhatsApp direct pour contact',
+                  'Section avis clients (carrousel)',
+                ]
               },
               {
-                id: '03', icon: '👤', title: 'Compte client & Fidélité',
-                questions: [
-                  'Voulez-vous que le client SOIT OBLIGÉ de créer un compte pour commander, ou c\'est optionnel ?',
-                  'Le système de points/badges est-il une priorité ou peut-on l\'ajouter plus tard ?',
-                  'Quels avantages concrets par niveau ? (ex: Bronze: rien · Argent: -5% · Or: livraison gratuite)',
-                ],
+                topic:'Menu',color:C.purp,
+                items:[
+                  'Client choisit son mode d\'affichage (grille / liste / horizontal)',
+                  'Vraies photos (à uploader plus tard — placeholders pour l\'instant)',
+                  'Tap → Bottom Sheet avec ingrédients (connecté backoffice)',
+                  'Barre de recherche avec produits suggérés (configurés backoffice)',
+                  'Badges Populaire / Nouveau gérés backoffice',
+                ]
               },
               {
-                id: '04', icon: '⭐', title: 'Section Avis clients',
-                questions: [
-                  'Voulez-vous afficher des vrais avis Google, ou des témoignages saisis manuellement dans le backoffice ?',
-                  'Préférez-vous un carrousel (défilement automatique) ou une grille statique ?',
-                ],
+                topic:'Commande',color:C.green,
+                items:[
+                  '2 modes seulement : À Emporter + Livraison',
+                  'Compte optionnel — incitation avec % discount configurable',
+                  'GPS livraison → lien Google Maps généré + sauvegardé',
+                  'Tip proposé dans le panier',
+                  'WhatsApp popup OU confirmation site directe',
+                  'Compte à rebours post-commande (délai configurable backoffice)',
+                ]
               },
               {
-                id: '05', icon: '📍', title: 'Localisation & Contact',
-                questions: [
-                  'Confirmez-vous : juste un bouton "Voir sur Google Maps" (compact, pas d\'iframe) ?',
-                  'Les horaires doivent-ils apparaître sur la page d\'accueil ou seulement en footer ?',
-                  'Un formulaire de contact textuel ou seulement le bouton WhatsApp direct ?',
-                ],
+                topic:'Post-commande',color:C.amber,
+                items:[
+                  'Timeline statut (5 étapes) pilotée par le staff depuis backoffice',
+                  'Bouton "Appeler le restaurant" permanent',
+                  'Formulaire avis après délai (photo + commentaire + étoiles)',
+                  'Avis → points bonus + validation backoffice avant publication',
+                  'Bouton "Commander à nouveau"',
+                  'Bouton contact/réclamation → WhatsApp',
+                ]
               },
               {
-                id: '06', icon: '🔧', title: 'Back-office (après le front)',
-                questions: [
-                  'À traiter séparément une fois le front validé et implémenté.',
-                ],
+                topic:'Fidélité',color:C.amber,
+                items:[
+                  'Bronze / Argent / Or selon nombre de commandes',
+                  'Points : 1 Dh = 1 pt, valeur configurable backoffice',
+                  'Avantages par niveau configurables backoffice',
+                  'Favoris + historique',
+                  'Points bonus pour avis validé',
+                ]
               },
-            ].map(section => (
-              <Card key={section.id} title={`${section.icon} ${section.title}`} icon="" color={AMBER} badge="À VALIDER">
-                {section.questions.map((q, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <span style={{ color: AMBER, fontWeight: 800, fontSize: 12, flexShrink: 0 }}>Q{i + 1}.</span>
-                    <span style={{ color: '#cbd5e1', fontSize: 12 }}>{q}</span>
+              {
+                topic:'Avis',color:C.amber,
+                items:[
+                  'Upload photo + commentaire + note',
+                  'Validation backoffice avant publication',
+                  'Page dédiée tous les avis',
+                  'Lien avis Google sur accueil + confirmation',
+                ]
+              },
+            ].map(s=>(
+              <Section key={s.topic} title={s.topic} icon="✓" color={s.color} badge="✓">
+                {s.items.map((item,i)=>(
+                  <div key={i} style={{display:'flex',gap:8,marginBottom:6,alignItems:'flex-start'}}>
+                    <span style={{color:C.green,flexShrink:0,marginTop:1}}>✓</span>
+                    <span style={{color:'#cbd5e1',fontSize:12}}>{item}</span>
                   </div>
                 ))}
-              </Card>
+              </Section>
             ))}
+          </div>
+        )}
+
+        {/* ══════════ SECURITY ══════════ */}
+        {tab==='security'&&(
+          <div>
+            <div style={{background:C.coral+'12',border:`1px solid ${C.coral}40`,borderRadius:14,padding:'12px 16px',marginBottom:20}}>
+              <div style={{color:C.coral,fontWeight:800,fontSize:13}}>🔒 OWASP Security — Priorité absolue avant tout autre code</div>
+              <div style={{color:'#fca5a5',fontSize:12,marginTop:4}}>Implémenté dès le départ, pas en patch post-dev.</div>
+            </div>
+
+            <Section title="Frontend Security" icon="🛡️" color={C.coral}>
+              {[
+                {rule:'Input Sanitization',detail:'Tous les champs de formulaire : trim() + strip HTML tags + longueur max. Avant envoi vers API.'},
+                {rule:'Validation côté client',detail:'Regex téléphone marocain (+212 / 06 / 07), format email, adresse min 10 chars, nom min 2 chars.'},
+                {rule:'XSS Prevention',detail:'Pas de dangerouslySetInnerHTML. Toute donnée affichée vient du state React, jamais injectée raw.'},
+                {rule:'Rate Limiting UI',detail:'Bouton "Commander" désactivé 3s après clic. Pas de double-soumission possible.'},
+                {rule:'Env Variables',detail:'Numéro WA, Google Maps API Key, Google Place ID → variables d\'environnement (.env). Jamais hardcodés dans le code.'},
+                {rule:'GPS Permissions',detail:'navigator.geolocation uniquement sur HTTPS. Gestion explicite du refus. Fallback → saisie manuelle.'},
+              ].map((r,i)=>(
+                <div key={i} style={{marginBottom:10,paddingBottom:10,borderBottom:i<5?`1px solid ${C.border}`:'none'}}>
+                  <div style={{color:C.coral,fontWeight:700,fontSize:12}}>{r.rule}</div>
+                  <div style={{color:C.muted,fontSize:12,marginTop:3}}>{r.detail}</div>
+                </div>
+              ))}
+            </Section>
+
+            <Section title="Backend / API Security" icon="🔐" color={C.coral}>
+              {[
+                {rule:'Parameterized Queries',detail:'Toutes les requêtes DB utilisent des paramètres. Zéro concaténation de strings SQL.'},
+                {rule:'Rate Limiting API',detail:'Express-rate-limit : max 10 req/min par IP sur POST /orders. Max 5 tentatives login.'},
+                {rule:'Input Validation Backend',detail:'Joi ou Zod schema validation sur chaque endpoint. Même si le frontend valide, le backend revalide.'},
+                {rule:'API Keys en .env',detail:'WHATSAPP_NUMBER, GOOGLE_MAPS_KEY, JWT_SECRET, DB_URL → toutes en variables d\'environnement.'},
+                {rule:'CORS',detail:'Allowlist des origines autorisées. Pas de wildcard * en production.'},
+                {rule:'Helmet.js',detail:'Headers HTTP de sécurité : HSTS, X-Frame-Options, CSP, etc.'},
+                {rule:'Auth JWT',detail:'Tokens avec expiration courte (1h access + refresh token). Stored en httpOnly cookie, pas localStorage.'},
+              ].map((r,i)=>(
+                <div key={i} style={{marginBottom:10,paddingBottom:10,borderBottom:i<6?`1px solid ${C.border}`:'none'}}>
+                  <div style={{color:C.coral,fontWeight:700,fontSize:12}}>{r.rule}</div>
+                  <div style={{color:C.muted,fontSize:12,marginTop:3}}>{r.detail}</div>
+                </div>
+              ))}
+            </Section>
+
+            <Section title="Données sensibles" icon="🗝️" color={C.amber}>
+              <Note emoji="📱" text="Numéro téléphone client : stocké hashé ou masqué dans l'affichage backoffice (+212 6XX XXX ***)" type="security"/>
+              <Note emoji="📍" text="Coordonnées GPS : stockées uniquement sous forme de lien Maps, pas les coordonnées brutes." type="security"/>
+              <Note emoji="🔑" text="Mots de passe : bcrypt avec salt rounds ≥ 12. Jamais stockés en clair." type="security"/>
+              <Note emoji="🍪" text="Sessions : httpOnly cookies + SameSite=Strict. Pas de token dans l'URL." type="security"/>
+            </Section>
+
+            <Section title="Fichier .env requis" icon="⚙️" color={C.dim}>
+              <div style={{background:'#030810',borderRadius:10,padding:14,fontFamily:'monospace',fontSize:11,color:'#86efac',lineHeight:2}}>
+                {'# Restaurant\n'}
+                {'VITE_WHATSAPP_NUMBER=+212600000000\n'}
+                {'VITE_RESTAURANT_PHONE=+212522000000\n'}
+                {'VITE_GOOGLE_MAPS_PLACE_ID=ChIJ...\n'}
+                {'\n# Auth & DB\n'}
+                {'JWT_SECRET=your-super-secret-key\n'}
+                {'DB_URL=mongodb://localhost/asaka\n'}
+                {'\n# APIs\n'}
+                {'VITE_GOOGLE_MAPS_KEY=AIza...\n'}
+              </div>
+              <Note emoji="⚠️" text="Ces valeurs sont des placeholders. Remplacer avec les vraies infos avant déploiement. Le fichier .env est dans .gitignore." type="security"/>
+            </Section>
+          </div>
+        )}
+
+        {/* ══════════ STACK ══════════ */}
+        {tab==='stack'&&(
+          <div>
+            <Section title="Stack Technique" icon="⚙️" color={C.ice}>
+              <Row>
+                <Chip emoji="⚛️" label="React 19" sub="Framework UI" color={C.ice}/>
+                <Chip emoji="⚡" label="Vite" sub="Build tool" color={C.amber}/>
+                <Chip emoji="🎨" label="Tailwind CSS 3" sub="Styling" color={C.blue}/>
+              </Row>
+              <Row>
+                <Chip emoji="🗄️" label="État local" sub="useState / useContext" color={C.purp}/>
+                <Chip emoji="📦" label="Lucide Icons" sub="Déjà installé" color={C.ice}/>
+              </Row>
+            </Section>
+
+            <Section title="Nouvelles librairies pour le design Apple-like" icon="✨" color={C.purp}>
+              {[
+                {lib:'Framer Motion',npm:'framer-motion',usage:'Animations scroll-triggered, transitions de pages, bottom sheet, confettis. Le plus adapté à React.'},
+                {lib:'Three.js + React Three Fiber',npm:'@react-three/fiber @react-three/drei',usage:'Éléments 3D dans le hero (sushi 3D, particules). Optionnel si trop lourd — on peut faire du CSS 3D.'},
+                {lib:'Lenis / Smooth Scroll',npm:'@studio-freight/lenis',usage:'Scroll fluide comme Apple.com — différence immédiate sur la qualité perçue.'},
+                {lib:'React Hot Toast',npm:'react-hot-toast',usage:'Notifications légères : "Article ajouté", "Commande confirmée".'},
+                {lib:'React Hook Form + Zod',npm:'react-hook-form zod',usage:'Validation de formulaires robuste + type-safe. Remplace la validation manuelle actuelle.'},
+              ].map((l,i)=>(
+                <div key={i} style={{marginBottom:12,paddingBottom:12,borderBottom:i<4?`1px solid ${C.border}`:'none'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                    <span style={{color:C.purp,fontWeight:800,fontSize:13}}>{l.lib}</span>
+                    <span style={{background:'#1e3a5f',borderRadius:6,padding:'1px 8px',fontSize:10,fontFamily:'monospace',color:C.muted}}>{l.npm}</span>
+                  </div>
+                  <div style={{color:C.muted,fontSize:12}}>{l.usage}</div>
+                </div>
+              ))}
+              <Note emoji="📦" text="Total nouvelles dépendances : 5 packages. Impact bundle géré avec lazy loading des composants 3D." type="idea"/>
+            </Section>
+
+            <Section title="Structure des fichiers (refonte)" icon="📁" color={C.dim}>
+              <div style={{fontFamily:'monospace',fontSize:11,color:'#94a3b8',lineHeight:2,background:'#030810',borderRadius:10,padding:14}}>
+                {`src/frontoffice/
+├── FrontApp.jsx              (état global, routing)
+├── components/
+│   ├── layout/
+│   │   ├── BottomNav.jsx     ← NOUVEAU
+│   │   ├── FrontNavbar.jsx   (simplifié)
+│   │   └── Footer.jsx        (compact)
+│   ├── home/
+│   │   ├── HeroSection.jsx   ← REFONDU 3D
+│   │   ├── OwnerSection.jsx  ← NOUVEAU
+│   │   ├── HowItWorks.jsx    ← NOUVEAU
+│   │   ├── FeaturedMenu.jsx  (refondu)
+│   │   ├── ReviewsSection.jsx← NOUVEAU
+│   │   └── LocationContact.jsx← compact
+│   ├── menu/
+│   │   ├── MenuPage.jsx      (refondu)
+│   │   ├── MenuSearch.jsx    ← NOUVEAU
+│   │   └── ItemBottomSheet.jsx←NOUVEAU
+│   ├── order/
+│   │   ├── CartPage.jsx
+│   │   ├── UnifiedCheckout.jsx
+│   │   ├── WaConfirmModal.jsx← NOUVEAU
+│   │   └── OrderConfirmation.jsx
+│   ├── reviews/
+│   │   └── ReviewsPage.jsx   ← NOUVEAU
+│   └── auth/
+│       ├── CustomerAuth.jsx
+│       └── CustomerProfile.jsx
+└── data/
+    └── asakaData.js          ← RENOMMÉ`}
+              </div>
+            </Section>
+          </div>
+        )}
+
+        {/* ══════════ START ══════════ */}
+        {tab==='start'&&(
+          <div>
+            {/* All clear */}
+            <div style={{background:C.green+'12',border:`1px solid ${C.green}40`,borderRadius:16,padding:'16px 18px',marginBottom:20}}>
+              <div style={{color:C.green,fontWeight:900,fontSize:16,marginBottom:8}}>🚀 Tout est validé — Prêt à démarrer</div>
+              <div style={{color:'#86efac',fontSize:13}}>Le plan est complet. Voici exactement dans quel ordre on construit.</div>
+            </div>
+
+            {/* Order of work */}
+            <Section title="Ordre d'implémentation" icon="📋" color={C.ice}>
+              {[
+                {n:1, phase:'Setup & Foundation', items:['Renommer Salmon Sushi → Asaka Sushi dans tous les fichiers','Changer la palette (tokens CSS orange → bleu)','Installer Framer Motion + Lenis + React Hot Toast','Configurer .env avec placeholders','Mettre en place la validation OWASP (Zod + sanitize)'], color:C.coral, est:'1-2h'},
+                {n:2, phase:'Navigation & Layout', items:['Bottom Nav Bar (mobile)','Simplifier FrontNavbar (desktop)','Footer compact'], color:C.ice, est:'1h'},
+                {n:3, phase:'Page d\'accueil (Hero 3D + sections)', items:['HeroSection animée (Framer Motion + optionnel Three.js)','Section owner/bio','HowItWorks japonais illustré','LocationContact compact (bouton Maps)'], color:C.purp, est:'3-4h'},
+                {n:4, phase:'Page Menu', items:['Refonte MenuPage (3 modes affichage)','Barre de recherche avec suggestions','ItemBottomSheet (popup ingrédients)','FAB panier flottant'], color:C.ice, est:'2-3h'},
+                {n:5, phase:'Flux de commande', items:['CartPage (2 modes seulement)','UnifiedCheckout (Emporter + Livraison + GPS)','WaConfirmModal (popup WhatsApp)','OrderConfirmation (timeline + timer)'], color:C.green, est:'2-3h'},
+                {n:6, phase:'Compte & Fidélité', items:['CustomerAuth (login/signup avec offre incitative)','CustomerProfile (badge tier + points + historique + favoris)'], color:C.amber, est:'2h'},
+                {n:7, phase:'Avis Clients', items:['ReviewsSection (homepage)','ReviewsPage (dédiée)','FormAvis (upload photo + note + commentaire)'], color:C.amber, est:'1-2h'},
+                {n:8, phase:'Polish & Responsive', items:['Tests mobile (375px, 390px, 430px)','Animations finales','Performance (lazy loading images)','Vérification sécurité complète'], color:C.dim, est:'2h'},
+              ].map(p=>(
+                <div key={p.n} style={{marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${C.border}`}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                    <div style={{width:28,height:28,borderRadius:'50%',background:p.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:900,color:C.bg,flexShrink:0}}>{p.n}</div>
+                    <span style={{color:C.white,fontWeight:800,fontSize:14,flex:1}}>{p.phase}</span>
+                    <span style={{background:C.border,borderRadius:999,padding:'2px 8px',fontSize:10,color:C.muted}}>{p.est}</span>
+                  </div>
+                  {p.items.map((item,i)=>(
+                    <div key={i} style={{display:'flex',gap:8,marginBottom:4,marginLeft:38}}>
+                      <span style={{color:p.color,fontSize:10,marginTop:3,flexShrink:0}}>▸</span>
+                      <span style={{color:C.muted,fontSize:12}}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </Section>
+
+            {/* What we need from client */}
+            <Section title="Ce qu'on attend du client (can start sans ça)" icon="📬" color={C.amber} badge="!">
+              {[
+                {item:'Numéro WhatsApp du restaurant', urgency:'Avant Phase 5', color:C.coral},
+                {item:'Numéro de téléphone du restaurant', urgency:'Avant Phase 5', color:C.coral},
+                {item:'Google Maps Place ID (pour lien avis)', urgency:'Avant Phase 7', color:C.amber},
+                {item:'Photo du propriétaire (Instagram)', urgency:'Avant Phase 3', color:C.amber},
+                {item:'Contenu menu réel (noms, prix, catégories, ingrédients)', urgency:'Placeholders pour l\'instant', color:C.dim},
+                {item:'Photos des plats HD', urgency:'Placeholders pour l\'instant', color:C.dim},
+                {item:'Instagram handle du restaurant', urgency:'Avant Phase 3', color:C.amber},
+                {item:'Adresse exacte du restaurant', urgency:'Avant Phase 3', color:C.amber},
+                {item:'Horaires d\'ouverture', urgency:'Avant Phase 3', color:C.amber},
+              ].map((r,i)=>(
+                <div key={i} style={{display:'flex',gap:10,alignItems:'center',marginBottom:8}}>
+                  <div style={{width:8,height:8,borderRadius:'50%',background:r.color,flexShrink:0}}/>
+                  <span style={{color:'#cbd5e1',fontSize:12,flex:1}}>{r.item}</span>
+                  <span style={{background:r.color+'20',color:r.color,borderRadius:999,padding:'1px 8px',fontSize:10,fontWeight:700,whiteSpace:'nowrap'}}>{r.urgency}</span>
+                </div>
+              ))}
+            </Section>
+
+            <div style={{background:`linear-gradient(135deg,${C.blue}22,${C.ice}11)`,border:`1px solid ${C.ice}30`,borderRadius:16,padding:18,marginTop:8,textAlign:'center'}}>
+              <div style={{fontSize:32,marginBottom:8}}>✅</div>
+              <div style={{color:C.ice,fontWeight:900,fontSize:16,marginBottom:6}}>Validez ce plan et on démarre Phase 1</div>
+              <div style={{color:C.muted,fontSize:13}}>Dites "go" et je commence par le Setup + Foundation + OWASP Security.</div>
+            </div>
           </div>
         )}
 

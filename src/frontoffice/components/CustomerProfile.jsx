@@ -1,252 +1,261 @@
-import React from 'react';
-import { ArrowLeft, Star, Award, ShoppingBag, TrendingUp, LogOut, Clock } from 'lucide-react';
-import { getBadge, getNextBadge, POINTS_VALUE, MIN_REDEEM } from '../../data/menuData';
+// ═══════════════════════════════════════════════════════════
+//  ASAKA SUSHI — CustomerProfile
+//  Badge tier, points, order history, favorites
+// ═══════════════════════════════════════════════════════════
+import React, { useState } from 'react';
+import { getBadge, getNextBadge, POINTS_VALUE, MIN_REDEEM, BADGES } from '../../data/asakaData';
 
 const CustomerProfile = ({ navigate, currentCustomer, handleLogout, openAuth }) => {
+  const [activeTab, setActiveTab] = useState('points');
+
   if (!currentCustomer) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6">
-        <div className="text-center">
-          <div className="text-6xl mb-6">👤</div>
-          <h2 className="text-2xl font-extrabold text-white mb-3">Mon Compte</h2>
-          <p className="text-zinc-400 mb-6">Connectez-vous pour accéder à votre profil, vos points et vos badges.</p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => openAuth('login')}
-              className="px-6 py-3 bg-white/10 border border-white/20 text-white font-semibold rounded-xl text-sm hover:bg-white/15 transition-colors"
-            >
-              Se Connecter
-            </button>
-            <button
-              onClick={() => openAuth('signup')}
-              className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl text-sm shadow-lg shadow-orange-500/30 transition-colors"
-            >
-              Créer un Compte
-            </button>
-          </div>
-        </div>
+      <div className="min-h-screen bg-asaka-900 flex flex-col items-center justify-center
+        px-6 pt-24 text-center">
+        <div className="text-7xl mb-5">👤</div>
+        <h2 className="text-white font-black text-2xl mb-2">Espace fidélité</h2>
+        <p className="text-asaka-muted text-sm mb-8">
+          Connectez-vous pour accéder à votre profil et vos points
+        </p>
+        <button onClick={() => openAuth('login')}
+          className="btn-primary px-8 py-3.5 text-sm mb-3">
+          Se connecter
+        </button>
+        <button onClick={() => openAuth('signup')}
+          className="btn-secondary px-8 py-3 text-sm">
+          Créer un compte
+        </button>
       </div>
     );
   }
 
-  const badge = getBadge(currentCustomer.totalOrders);
-  const nextBadge = getNextBadge(currentCustomer.totalOrders);
-  const points = currentCustomer.points || 0;
-  const totalOrders = currentCustomer.totalOrders || 0;
-  const totalSpent = currentCustomer.totalSpent || 0;
-  const orderHistory = currentCustomer.orderHistory || [];
-
-  const progressToNext = nextBadge
-    ? Math.min(100, ((totalOrders / nextBadge.threshold) * 100))
+  const badge    = getBadge(currentCustomer.totalOrders || 0);
+  const nextInfo = getNextBadge(currentCustomer.totalOrders || 0);
+  const progress = nextInfo
+    ? Math.round(((currentCustomer.totalOrders - (badge.minOrders || 0)) /
+        (nextInfo.badge.minOrders - (badge.minOrders || 0))) * 100)
     : 100;
+  const pointsValue = Math.floor((currentCustomer.points || 0) * POINTS_VALUE);
+  const canRedeem   = (currentCustomer.points || 0) >= MIN_REDEEM;
 
-  const allBadges = [
-    { emoji: '🌱', label: 'Graines de Riz', threshold: 1, unlocked: totalOrders >= 1 },
-    { emoji: '🥢', label: 'Habitué', threshold: 5, unlocked: totalOrders >= 5 },
-    { emoji: '🐟', label: 'Passionné', threshold: 10, unlocked: totalOrders >= 10 },
-    { emoji: '🍣', label: 'VIP Salmon', threshold: 25, unlocked: totalOrders >= 25 },
-    { emoji: '👑', label: 'Sushi Master', threshold: 50, unlocked: totalOrders >= 50 },
+  const TABS = [
+    { id: 'points',  label: 'Points',    emoji: '⭐' },
+    { id: 'history', label: 'Historique', emoji: '📋' },
   ];
 
   return (
-    <div className="min-h-screen pt-20 pb-16 px-6">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-asaka-900 pt-20 pb-28">
+      <div className="max-w-xl mx-auto px-4">
 
-        {/* Back */}
-        <button
-          onClick={() => navigate('home')}
-          className="flex items-center space-x-2 text-zinc-400 hover:text-white text-sm mb-8 transition-colors"
-        >
-          <ArrowLeft size={16} />
-          <span>Retour</span>
-        </button>
+        {/* Profile header */}
+        <div className="glass rounded-3xl p-6 mb-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-asaka-500/10 rounded-full
+            blur-3xl pointer-events-none" />
 
-        {/* Profile Card */}
-        <div className={`relative p-6 rounded-3xl bg-gradient-to-br ${badge.color} mb-6 overflow-hidden shadow-2xl`}>
-          {/* Background pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-4 right-4 text-[120px] leading-none select-none">{badge.emoji}</div>
-          </div>
-
-          <div className="relative flex items-start justify-between">
-            <div className="flex items-center space-x-4">
-              {/* Avatar */}
-              <div className="w-16 h-16 rounded-2xl bg-black/30 backdrop-blur-sm border border-white/20 flex items-center justify-center text-3xl font-extrabold text-white">
-                {currentCustomer.name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <h1 className="text-2xl font-extrabold text-white">{currentCustomer.name}</h1>
-                <p className="text-white/70 text-sm">{currentCustomer.email}</p>
-                <div className="flex items-center space-x-2 mt-1.5">
-                  <span className="text-xl">{badge.emoji}</span>
-                  <span className="text-white font-bold text-sm">{badge.label}</span>
-                </div>
-              </div>
+          <div className="flex items-start gap-4 relative z-10">
+            {/* Avatar */}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br
+              from-asaka-600 to-asaka-300 flex items-center justify-center
+              text-white font-black text-2xl shadow-glow-blue flex-shrink-0">
+              {currentCustomer.name?.[0]?.toUpperCase() || '?'}
             </div>
-            <button
-              onClick={() => { handleLogout(); navigate('home'); }}
-              className="p-2 bg-black/20 hover:bg-black/40 rounded-xl text-white/70 hover:text-white transition-all"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-3 mt-6">
-            {[
-              { icon: <Star size={16} />, value: points, label: 'Points' },
-              { icon: <ShoppingBag size={16} />, value: totalOrders, label: 'Commandes' },
-              { icon: <TrendingUp size={16} />, value: `${Math.round(totalSpent)} Dh`, label: 'Dépensé' },
-            ].map((stat, i) => (
-              <div key={i} className="bg-black/20 backdrop-blur-sm rounded-xl p-3 text-center">
-                <div className="text-white/60 flex justify-center mb-1">{stat.icon}</div>
-                <div className="text-white font-extrabold text-lg">{stat.value}</div>
-                <div className="text-white/60 text-xs">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Member since */}
-          {currentCustomer.joinedDate && (
-            <p className="text-white/50 text-xs mt-4">
-              Membre depuis le {currentCustomer.joinedDate}
-            </p>
-          )}
-        </div>
-
-        {/* Points Card */}
-        <div className="p-5 bg-white/5 border border-white/10 rounded-2xl mb-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-white font-bold flex items-center space-x-2">
-              <Star size={18} className="text-amber-400" />
-              <span>Mes Points</span>
-            </h2>
-            <span className="text-3xl font-extrabold text-amber-400">{points}</span>
-          </div>
-          <div className="text-zinc-400 text-xs mb-4">
-            Valeur: <span className="text-amber-400 font-bold">{(points * POINTS_VALUE).toFixed(1)} Dh</span>
-            {points >= MIN_REDEEM && (
-              <span className="ml-2 text-green-400">✓ Utilisables à la prochaine commande</span>
-            )}
-          </div>
-          <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-xs text-zinc-400 space-y-1">
-            <p>🟡 1 Dh dépensé = 1 point gagné</p>
-            <p>💫 100 points = 10 Dh de réduction</p>
-            <p>⭐ Activez vos points lors du checkout</p>
-          </div>
-        </div>
-
-        {/* Badge Progress */}
-        <div className="p-5 bg-white/5 border border-white/10 rounded-2xl mb-5">
-          <h2 className="text-white font-bold mb-4 flex items-center space-x-2">
-            <Award size={18} className="text-orange-400" />
-            <span>Badges & Progression</span>
-          </h2>
-
-          <div className="grid grid-cols-5 gap-2 mb-5">
-            {allBadges.map((b) => (
-              <div
-                key={b.label}
-                className={`flex flex-col items-center p-2 rounded-xl border transition-all text-center ${
-                  b.unlocked
-                    ? 'bg-orange-500/10 border-orange-500/40 shadow-md shadow-orange-500/10'
-                    : 'bg-white/3 border-white/10 opacity-40'
-                }`}
-              >
-                <span className="text-2xl mb-1">{b.emoji}</span>
-                <span className={`text-[9px] font-bold leading-tight ${b.unlocked ? 'text-orange-300' : 'text-zinc-600'}`}>
-                  {b.label}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-white font-black text-xl truncate">{currentCustomer.name}</h1>
+              <p className="text-asaka-muted text-xs mt-0.5 truncate">{currentCustomer.email}</p>
+              <div className="flex items-center gap-2 mt-2">
+                {/* Badge */}
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+                  text-xs font-bold ${badge.textColor} bg-asaka-800 border border-asaka-700/40`}>
+                  <span>{badge.emoji}</span>
+                  <span>{badge.name}</span>
                 </span>
-                <span className="text-[9px] text-zinc-600 mt-0.5">{b.threshold}+</span>
+                <span className="text-asaka-muted text-xs">
+                  {currentCustomer.totalOrders || 0} commandes
+                </span>
               </div>
-            ))}
+            </div>
           </div>
 
-          {nextBadge && (
-            <div>
-              <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
-                <span>Prochain badge: <span className="text-orange-400 font-bold">{nextBadge.badge.label} {nextBadge.badge.emoji}</span></span>
-                <span>{totalOrders} / {nextBadge.threshold} commandes</span>
-              </div>
-              <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                <div
-                  className="h-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-full transition-all duration-700"
-                  style={{ width: `${progressToNext}%` }}
-                />
-              </div>
-              <p className="text-zinc-600 text-xs mt-1">
-                Encore <span className="text-white">{nextBadge.remaining}</span> commande{nextBadge.remaining > 1 ? 's' : ''} pour débloquer ce badge
-              </p>
-            </div>
-          )}
-
-          {!nextBadge && (
-            <div className="text-center py-2">
-              <span className="text-yellow-400 font-bold text-sm">👑 Vous avez atteint le niveau maximum !</span>
-            </div>
-          )}
-        </div>
-
-        {/* Order History */}
-        <div className="p-5 bg-white/5 border border-white/10 rounded-2xl mb-5">
-          <h2 className="text-white font-bold mb-4 flex items-center space-x-2">
-            <Clock size={18} className="text-zinc-400" />
-            <span>Historique des Commandes</span>
-          </h2>
-
-          {orderHistory.length === 0 ? (
-            <div className="text-center py-8 text-zinc-600">
-              <ShoppingBag size={36} className="mx-auto mb-3 opacity-30" />
-              <p>Aucune commande pour l'instant.</p>
-              <button
-                onClick={() => navigate('dine-in')}
-                className="mt-4 text-orange-400 hover:text-orange-300 text-sm font-medium transition-colors"
-              >
-                Commander maintenant →
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {orderHistory.slice(0, 5).map((order, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-white/3 border border-white/5 rounded-xl">
-                  <div>
-                    <div className="text-white text-sm font-semibold">{order.id}</div>
-                    <div className="text-zinc-500 text-xs mt-0.5">{order.date}</div>
-                    {order.items && (
-                      <div className="text-zinc-600 text-xs mt-0.5 truncate max-w-[200px]">
-                        {order.items.slice(0, 2).join(', ')}{order.items.length > 2 ? '...' : ''}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-orange-400 font-bold text-sm">
-                    {Math.round(order.total)} Dh
-                  </div>
-                </div>
-              ))}
-              {orderHistory.length > 5 && (
-                <p className="text-zinc-600 text-xs text-center">
-                  + {orderHistory.length - 5} commandes précédentes
-                </p>
+          {/* Badge progress */}
+          <div className="mt-5 relative z-10">
+            <div className="flex justify-between text-xs mb-1.5">
+              <span className="text-asaka-muted font-semibold">{badge.emoji} {badge.name}</span>
+              {nextInfo ? (
+                <span className="text-asaka-muted">
+                  {nextInfo.badge.emoji} {nextInfo.badge.name} dans {nextInfo.remaining} commandes
+                </span>
+              ) : (
+                <span className="text-yellow-400 font-bold">Niveau maximum ! 🏆</span>
               )}
             </div>
-          )}
+            <div className="h-2 bg-asaka-900 rounded-full overflow-hidden border border-asaka-700/40">
+              <div
+                className="h-full rounded-full transition-all duration-1000"
+                style={{
+                  width: `${progress}%`,
+                  background: 'linear-gradient(90deg, #1565c0, #4fc3f7)',
+                  boxShadow: '0 0 8px rgba(79,195,247,0.5)',
+                }}
+              />
+            </div>
+            <p className="text-asaka-600 text-xs mt-1">{badge.perks}</p>
+          </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => navigate('menu')}
-            className="py-3 bg-white/5 border border-white/10 hover:border-orange-500/30 rounded-2xl text-white font-semibold text-sm transition-all text-center"
-          >
-            🍣 Voir le Menu
-          </button>
-          <button
-            onClick={() => navigate('dine-in')}
-            className="py-3 bg-orange-500 hover:bg-orange-600 rounded-2xl text-white font-semibold text-sm shadow-lg shadow-orange-500/30 transition-all text-center"
-          >
-            🍽️ Commander
-          </button>
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {[
+            { value: currentCustomer.totalOrders || 0, label: 'Commandes' },
+            { value: `${currentCustomer.points || 0}`, label: 'Points', sub: `= ${pointsValue} DH` },
+            { value: `${Math.round(currentCustomer.totalSpent || 0)} DH`, label: 'Total dépensé' },
+          ].map(s => (
+            <div key={s.label} className="glass rounded-2xl py-4 px-3 text-center">
+              <div className="text-asaka-300 font-black text-xl leading-none">{s.value}</div>
+              <div className="text-asaka-muted text-xs mt-1">{s.label}</div>
+              {s.sub && <div className="text-asaka-600 text-[10px] mt-0.5">{s.sub}</div>}
+            </div>
+          ))}
         </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-4">
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                activeTab === tab.id
+                  ? 'bg-asaka-500 text-white'
+                  : 'glass-light text-asaka-muted hover:text-white'
+              }`}>
+              {tab.emoji} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        {activeTab === 'points' && (
+          <div className="space-y-3">
+            {/* Points balance */}
+            <div className="card-asaka p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="text-asaka-muted text-xs font-semibold uppercase tracking-wider">
+                    Solde de points
+                  </div>
+                  <div className="text-asaka-300 font-black text-3xl mt-1">
+                    {currentCustomer.points || 0}
+                    <span className="text-asaka-muted text-base font-normal ml-1">pts</span>
+                  </div>
+                  <div className="text-asaka-muted text-sm mt-0.5">
+                    ≈ {pointsValue} DH de réduction
+                  </div>
+                </div>
+                <div className="text-4xl">⭐</div>
+              </div>
+
+              {canRedeem ? (
+                <div className="bg-green-900/20 border border-green-700/30 rounded-xl p-3 text-xs">
+                  <span className="text-green-400 font-bold">✅ Points utilisables</span>
+                  <p className="text-asaka-muted mt-0.5">
+                    Utilisez vos points au moment du checkout pour obtenir une réduction.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-asaka-900/50 border border-asaka-700/30 rounded-xl p-3 text-xs">
+                  <span className="text-asaka-muted">
+                    Encore {MIN_REDEEM - (currentCustomer.points || 0)} points pour utiliser vos récompenses
+                  </span>
+                  <div className="h-1.5 bg-asaka-900 rounded-full mt-2 overflow-hidden">
+                    <div className="h-full bg-asaka-500 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, ((currentCustomer.points || 0) / MIN_REDEEM) * 100)}%` }} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* All badge tiers */}
+            <div className="card-asaka p-5">
+              <h3 className="text-white font-bold text-sm mb-3">Niveaux de fidélité</h3>
+              <div className="space-y-3">
+                {BADGES.map(b => {
+                  const unlocked = (currentCustomer.totalOrders || 0) >= b.minOrders;
+                  return (
+                    <div key={b.name}
+                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+                        unlocked ? 'bg-asaka-700/30' : 'opacity-40'
+                      }`}>
+                      <span className="text-2xl">{b.emoji}</span>
+                      <div className="flex-1">
+                        <div className={`font-bold text-sm ${unlocked ? b.textColor : 'text-asaka-muted'}`}>
+                          {b.name}
+                        </div>
+                        <div className="text-asaka-muted text-xs">{b.perks}</div>
+                      </div>
+                      <div className="text-right text-xs text-asaka-muted">
+                        {b.minOrders === 0 ? 'Départ' : `${b.minOrders} cmds`}
+                      </div>
+                      {unlocked && <span className="text-green-400 text-sm">✓</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="space-y-3">
+            {(currentCustomer.orderHistory || []).length === 0 ? (
+              <div className="card-asaka p-8 text-center">
+                <div className="text-4xl mb-3">📋</div>
+                <div className="text-white font-bold">Aucune commande</div>
+                <div className="text-asaka-muted text-sm mt-1">
+                  Vos commandes apparaîtront ici
+                </div>
+                <button onClick={() => navigate('menu')}
+                  className="btn-primary px-6 py-2.5 text-sm mt-4">
+                  Commander 🍣
+                </button>
+              </div>
+            ) : (
+              (currentCustomer.orderHistory || []).map((order, i) => (
+                <div key={i} className="card-asaka p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-asaka-300 font-black text-sm">{order.id}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full
+                          bg-green-900/30 text-green-400 border border-green-800/30">
+                          ✓ Livré
+                        </span>
+                      </div>
+                      <div className="text-asaka-muted text-xs mt-0.5">{order.date}</div>
+                    </div>
+                    <div className="text-asaka-300 font-black text-sm">{order.total} DH</div>
+                  </div>
+                  {order.items && order.items.length > 0 && (
+                    <div className="text-asaka-muted text-xs">
+                      {order.items.slice(0, 3).join(', ')}
+                      {order.items.length > 3 && ` +${order.items.length - 3} autres`}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Logout */}
+        <button onClick={handleLogout}
+          className="w-full mt-6 py-3.5 rounded-2xl glass-light text-coral-400
+            text-sm font-bold hover:bg-red-900/20 transition-all flex items-center
+            justify-center gap-2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/>
+          </svg>
+          Se déconnecter
+        </button>
       </div>
     </div>
   );

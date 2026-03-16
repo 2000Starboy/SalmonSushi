@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Plus, Minus, ShoppingBag, Flame, Leaf, AlertCircle, ChefHat } from 'lucide-react';
-import { MENU_ITEMS } from '../../data/menuData';
+import { MENU_ITEMS } from '../../data/asakaData';
 
 const ProductPage = ({
   navigate,

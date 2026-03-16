@@ -1,601 +1,660 @@
-import React, { useState } from 'react';
-import { ArrowRight, MapPin, Clock, Phone, Star, ChevronRight, ExternalLink, X, UtensilsCrossed, ShoppingCart, Package } from 'lucide-react';
-import { menuItems, restaurantInfo } from '../../data/menuData';
+// ═══════════════════════════════════════════════════════════
+//  ASAKA SUSHI — HomePage
+//  Sections: Hero · MenuPreview · HowItWorks · OwnerSection
+//            LoyaltyTeaser · LocationContact · ReviewsSection
+// ═══════════════════════════════════════════════════════════
+import React, { useEffect, useRef, useState } from 'react';
+import { MENU_ITEMS, RESTAURANT } from '../../data/asakaData';
 
-const GLOVO_URL = 'https://glovoapp.com/ma/fr/casablanca/salmon-sushi-csb/';
+// ── Intersection Observer reveal hook ────────────────────
+function useReveal(threshold = 0.12) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { el.classList.add('visible'); obs.disconnect(); } },
+      { threshold }
+    );
+    // Start all child .reveal elements
+    el.querySelectorAll('.reveal').forEach(child => obs.observe(child));
+    // Also observe the container itself
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return ref;
+}
 
-// ─── Order Picker Modal ───────────────────────────────────────────────────────
-const OrderPickerModal = ({ isLight, navigate, onClose, setOrderMode }) => {
-  const [onlineOpen, setOnlineOpen] = useState(false);
+// Better: per-element reveal
+function RevealObserver({ children, className = '', delay = 0 }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { el.classList.add('visible'); obs.disconnect(); } },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className={`reveal ${className}`}
+      style={delay ? { transitionDelay: `${delay}s` } : {}}>
+      {children}
+    </div>
+  );
+}
 
-  const overlay   = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm';
-  const card      = isLight ? 'bg-white border border-gray-200 shadow-2xl' : 'bg-[#111111] border border-white/10 shadow-2xl shadow-black/60';
-  const titleCol  = isLight ? 'text-gray-900' : 'text-white';
-  const subCol    = isLight ? 'text-gray-500' : 'text-zinc-400';
-  const closeBtnC = isLight ? 'text-gray-400 hover:text-gray-700 hover:bg-gray-100' : 'text-zinc-500 hover:text-white hover:bg-white/10';
-  const onlineBg  = isLight ? 'bg-blue-50 border-blue-200' : 'bg-blue-500/10 border-blue-500/20';
-  const subBtnC   = isLight ? 'bg-white border-gray-200 hover:border-blue-300 text-gray-700 hover:shadow-sm' : 'bg-white/5 border-white/10 hover:border-blue-500/40 text-white';
+// ── Static sample reviews ─────────────────────────────────
+const SAMPLE_REVIEWS = [
+  { id: 1, name: 'Khadija M.', stars: 5, text: 'La California Asaka est absolument divine ! La livraison était rapide et les sushis arrivés frais. Je recommande vivement.', date: 'Il y a 2 jours', badge: 'Or' },
+  { id: 2, name: 'Youssef A.', stars: 5, text: 'Meilleur restaurant sushi de Casablanca. Le Volcano Roll et les aromakis signature sont à tomber. Bravo au chef !', date: 'Il y a 5 jours', badge: 'Argent' },
+  { id: 3, name: 'Sara B.', stars: 5, text: 'Service impeccable, qualité au rendez-vous à chaque commande. Le fondant matcha est juste parfait comme dessert.', date: 'Il y a 1 semaine', badge: 'Diamant' },
+  { id: 4, name: 'Omar K.', stars: 5, text: 'Le plateau découverte pour 2 personnes était généreux et varié. Parfait pour une soirée entre amis.', date: 'Il y a 2 semaines', badge: 'Bronze' },
+];
+
+const BADGE_COLORS = {
+  Bronze:  'text-amber-400 bg-amber-900/40 border border-amber-800/40',
+  Argent:  'text-slate-300 bg-slate-700/40 border border-slate-600/40',
+  Or:      'text-yellow-400 bg-yellow-900/40 border border-yellow-800/40',
+  Diamant: 'text-cyan-300 bg-cyan-900/40 border border-cyan-800/40',
+};
+
+// ── Stars helper ──────────────────────────────────────────
+const Stars = ({ count = 5, size = 14 }) => (
+  <div className="flex gap-0.5">
+    {Array.from({ length: 5 }).map((_, i) => (
+      <svg key={i} width={size} height={size} viewBox="0 0 24 24"
+        fill={i < count ? '#f59e0b' : 'none'} stroke={i < count ? '#f59e0b' : '#475569'}
+        strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round"
+          d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/>
+      </svg>
+    ))}
+  </div>
+);
+
+// ════════════════════════════════════════════════════════════
+//  HERO SECTION
+// ════════════════════════════════════════════════════════════
+const HeroSection = ({ navigate, setOrderMode }) => {
+  const handleOrder = (mode) => {
+    setOrderMode?.(mode);
+    navigate('menu');
+  };
 
   return (
-    <div className={overlay} onClick={onClose}>
-      <div className={`w-full max-w-sm rounded-3xl p-6 ${card}`} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className={`text-xl font-extrabold ${titleCol}`}>Comment commander ?</h2>
-            <p className={`text-xs mt-0.5 ${subCol}`}>Choisissez votre mode de commande</p>
-          </div>
-          <button onClick={onClose} className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${closeBtnC}`}>
-            <X size={16} />
+    <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden">
+      {/* Background layers */}
+      <div className="absolute inset-0 bg-gradient-to-b from-asaka-950 via-asaka-900 to-asaka-800" />
+
+      {/* Ambient blobs */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2
+        w-[500px] h-[500px] rounded-full bg-asaka-500/10 blur-[100px] pointer-events-none
+        animate-glow-pulse" />
+      <div className="absolute bottom-0 right-0 w-80 h-80
+        rounded-full bg-asaka-300/5 blur-[70px] pointer-events-none" />
+      <div className="absolute top-20 left-0 w-60 h-60
+        rounded-full bg-asaka-600/8 blur-[60px] pointer-events-none" />
+
+      {/* Glow rings */}
+      <div className="glow-ring" style={{ width: 300, height: 300,
+        top: '50%', left: '50%', transform: 'translate(-50%,-58%)' }} />
+      <div className="glow-ring-reverse" style={{ width: 440, height: 440,
+        top: '50%', left: '50%', transform: 'translate(-50%,-58%)' }} />
+      <div className="glow-ring" style={{ width: 580, height: 580,
+        top: '50%', left: '50%', transform: 'translate(-50%,-58%)',
+        animationDuration: '35s', opacity: 0.4 }} />
+
+      {/* Floating emoji particles */}
+      {['🍣','🥢','🌸','⭐','🍱'].map((emoji, i) => (
+        <span key={i}
+          className="absolute text-2xl select-none pointer-events-none"
+          style={{
+            top:    `${15 + i * 16}%`,
+            left:   `${8 + i * 19}%`,
+            opacity: 0.25,
+            animation: `floatParticle ${8 + i}s ease-in-out infinite`,
+            animationDelay: `${i * 1.4}s`,
+            '--dx1': `${20 - i * 8}px`,
+            '--dy1': `${-25 - i * 5}px`,
+            '--dx2': `${-15 + i * 6}px`,
+            '--dy2': `${-10 - i * 4}px`,
+          }}>
+          {emoji}
+        </span>
+      ))}
+
+      {/* Content */}
+      <div className="relative z-10 text-center px-6 max-w-lg mx-auto">
+        {/* Badge */}
+        <div className="animate-fade-up" style={{ animationDelay: '0.05s' }}>
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full
+            bg-asaka-500/15 border border-asaka-500/25 text-asaka-300 text-xs font-semibold
+            tracking-wider uppercase mb-5">
+            🏯 Casablanca · Sidi Maarouf
+          </span>
+        </div>
+
+        {/* Heading */}
+        <div className="animate-fade-up" style={{ animationDelay: '0.12s' }}>
+          <h1 className="text-[56px] sm:text-7xl font-black leading-none tracking-tight mb-3">
+            <span className="text-gradient-ice">Asaka</span>
+            <br />
+            <span className="text-white">Sushi</span>
+          </h1>
+          <p className="text-asaka-muted text-base sm:text-lg font-light tracking-wide mb-2">
+            L'art japonais, livré à votre porte
+          </p>
+          <p className="text-asaka-600 text-sm">
+            Casablanca's finest sushi experience
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div className="animate-fade-up flex items-center justify-center gap-8 my-8"
+          style={{ animationDelay: '0.2s' }}>
+          {[
+            { v: '4.9★', l: 'Note' },
+            { v: '500+', l: 'Avis' },
+            { v: '45min', l: 'Livraison' },
+          ].map(s => (
+            <div key={s.l} className="text-center">
+              <div className="text-white font-black text-xl leading-none">{s.v}</div>
+              <div className="text-asaka-muted text-xs mt-1">{s.l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA buttons */}
+        <div className="animate-fade-up flex flex-col sm:flex-row gap-3 justify-center"
+          style={{ animationDelay: '0.28s' }}>
+          <button
+            onClick={() => handleOrder('takeaway')}
+            className="btn-primary px-8 py-4 text-base flex items-center justify-center gap-3">
+            <span className="text-2xl">🥡</span>
+            <span>À Emporter</span>
+          </button>
+          <button
+            onClick={() => handleOrder('delivery')}
+            className="btn-secondary px-8 py-4 text-base flex items-center justify-center gap-3">
+            <span className="text-2xl">🛵</span>
+            <span>Livraison</span>
           </button>
         </div>
 
-        <div className="space-y-2.5">
-          {/* Dine In */}
-          <button
-            onClick={() => { setOrderMode?.('dine-in'); navigate('dine-in'); onClose(); }}
-            className={`w-full flex items-center space-x-4 px-4 py-3.5 border rounded-2xl transition-all hover:scale-[1.01] text-left ${
-              isLight ? 'bg-white border-gray-200 hover:border-orange-300 hover:shadow-md hover:shadow-orange-100' : 'bg-white/5 border-white/10 hover:border-orange-500/40 hover:bg-white/8'
-            }`}
-          >
-            <div className="w-11 h-11 rounded-xl bg-orange-500/15 flex items-center justify-center flex-shrink-0">
-              <UtensilsCrossed size={20} className="text-orange-500" />
-            </div>
-            <div className="flex-1">
-              <p className={`font-bold text-sm ${titleCol}`}>Manger sur Place</p>
-              <p className={`text-xs ${subCol}`}>Commandez directement à votre table</p>
-            </div>
-            <ArrowRight size={15} className={subCol} />
-          </button>
+        {/* Scroll indicator */}
+        <div className="animate-fade-up mt-14" style={{ animationDelay: '0.4s' }}>
+          <div className="w-6 h-10 border border-asaka-600/60 rounded-full mx-auto
+            flex items-start justify-center pt-1.5">
+            <div className="w-1 h-2.5 bg-asaka-300 rounded-full animate-bounce" />
+          </div>
+          <p className="text-asaka-600 text-xs mt-2 tracking-widest">SCROLL</p>
+        </div>
+      </div>
+    </section>
+  );
+};
 
-          {/* Take Away */}
-          <button
-            onClick={() => { setOrderMode?.('takeaway'); navigate('takeaway'); onClose(); }}
-            className={`w-full flex items-center space-x-4 px-4 py-3.5 border rounded-2xl transition-all hover:scale-[1.01] text-left ${
-              isLight ? 'bg-white border-gray-200 hover:border-green-300 hover:shadow-md hover:shadow-green-100' : 'bg-white/5 border-white/10 hover:border-green-500/40 hover:bg-white/8'
-            }`}
-          >
-            <div className="w-11 h-11 rounded-xl bg-green-500/15 flex items-center justify-center flex-shrink-0">
-              <ShoppingCart size={20} className="text-green-500" />
-            </div>
-            <div className="flex-1">
-              <p className={`font-bold text-sm ${titleCol}`}>À Emporter</p>
-              <p className={`text-xs ${subCol}`}>Click & collect — prêt à récupérer</p>
-            </div>
-            <ArrowRight size={15} className={subCol} />
-          </button>
+// ════════════════════════════════════════════════════════════
+//  MENU PREVIEW
+// ════════════════════════════════════════════════════════════
+const MenuPreviewSection = ({ navigate }) => {
+  const popularItems = MENU_ITEMS
+    .filter(i => i.isPopular || i.isSignature)
+    .slice(0, 6);
 
-          {/* Commander en Ligne */}
-          <div className={`border rounded-2xl overflow-hidden transition-all ${onlineOpen ? onlineBg : isLight ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'}`}>
-            <button
-              onClick={() => setOnlineOpen(o => !o)}
-              className="w-full flex items-center space-x-4 px-4 py-3.5 text-left"
-            >
-              <div className="w-11 h-11 rounded-xl bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                <Package size={20} className="text-blue-500" />
+  return (
+    <section className="py-24 px-4">
+      <div className="max-w-xl mx-auto">
+        <RevealObserver className="text-center mb-10">
+          <span className="text-asaka-300 text-xs font-bold tracking-widest uppercase">
+            Nos Créations
+          </span>
+          <h2 className="text-3xl font-black text-white mt-2">Menu Signature</h2>
+          <p className="text-asaka-muted mt-2 text-sm">
+            Sélection de nos plats les plus appréciés
+          </p>
+        </RevealObserver>
+
+        <div className="grid grid-cols-2 gap-3">
+          {popularItems.map((item, i) => (
+            <RevealObserver key={item.id} delay={i * 0.07}>
+              <button
+                onClick={() => navigate('menu')}
+                className="card-asaka-hover p-4 text-left w-full h-full">
+                <div className="text-3xl mb-2">{item.emoji}</div>
+                <div className="text-white font-bold text-sm leading-tight">{item.name}</div>
+                {item.pieces && (
+                  <div className="text-asaka-muted text-xs mt-0.5">{item.pieces} pièces</div>
+                )}
+                <div className="text-asaka-muted text-xs mt-1.5 line-clamp-2 leading-relaxed">
+                  {item.description}
+                </div>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-asaka-300 font-black text-sm">{item.price} DH</span>
+                  {item.isSignature && (
+                    <span className="text-[10px] bg-asaka-500/20 text-asaka-300
+                      border border-asaka-500/30 rounded-full px-2 py-0.5 font-semibold">
+                      ✨ Signature
+                    </span>
+                  )}
+                </div>
+              </button>
+            </RevealObserver>
+          ))}
+        </div>
+
+        <RevealObserver className="text-center mt-8" delay={0.5}>
+          <button onClick={() => navigate('menu')} className="btn-primary px-8 py-3 text-sm">
+            Voir tout le menu →
+          </button>
+        </RevealObserver>
+      </div>
+    </section>
+  );
+};
+
+// ════════════════════════════════════════════════════════════
+//  HOW IT WORKS
+// ════════════════════════════════════════════════════════════
+const HowItWorksSection = ({ navigate, setOrderMode }) => {
+  const STEPS = [
+    { num: '01', kanji: '選択', emoji: '🍣', title: 'Choisissez',
+      desc: 'Parcourez notre menu et ajoutez vos plats préférés au panier en un tap.' },
+    { num: '02', kanji: '確認', emoji: '📝', title: 'Confirmez',
+      desc: 'Renseignez vos infos et confirmez en ligne ou via WhatsApp en 30 secondes.' },
+    { num: '03', kanji: '配達', emoji: '🛵', title: 'Recevez',
+      desc: 'Suivez votre commande en temps réel — livraison à domicile ou retrait rapide.' },
+  ];
+
+  return (
+    <section className="py-24 px-4 relative overflow-hidden">
+      {/* Japanese decorative kanji */}
+      <div className="absolute right-[-20px] top-10 opacity-[0.04] select-none pointer-events-none
+        text-[220px] font-black text-white leading-none">
+        食
+      </div>
+
+      <div className="max-w-xl mx-auto relative z-10">
+        <RevealObserver className="text-center mb-12">
+          <span className="text-asaka-300 text-xs font-bold tracking-widest uppercase">
+            Comment commander
+          </span>
+          <h2 className="text-3xl font-black text-white mt-2">Simple & Rapide</h2>
+          <p className="text-asaka-muted mt-2 text-sm">3 étapes, moins de 2 minutes</p>
+        </RevealObserver>
+
+        <div className="space-y-4">
+          {STEPS.map((step, i) => (
+            <RevealObserver key={step.num} delay={i * 0.12}>
+              <div className="glass-light rounded-2xl p-5 flex items-start gap-5">
+                <div className="flex-shrink-0 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-asaka-500/20 border border-asaka-500/30
+                    flex items-center justify-center text-2xl mb-1">
+                    {step.emoji}
+                  </div>
+                  <div className="text-asaka-600 text-[10px] font-bold tracking-wider">
+                    {step.kanji}
+                  </div>
+                </div>
+                <div className="flex-1 pt-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-asaka-600 text-xs font-black">{step.num}</span>
+                    <h3 className="text-white font-bold text-base">{step.title}</h3>
+                  </div>
+                  <p className="text-asaka-muted text-sm leading-relaxed">{step.desc}</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className={`font-bold text-sm ${titleCol}`}>Commander en Ligne</p>
-                <p className={`text-xs ${subCol}`}>Via notre site ou via Glovo</p>
+            </RevealObserver>
+          ))}
+        </div>
+
+        <RevealObserver className="mt-8 text-center" delay={0.45}>
+          <button
+            onClick={() => { setOrderMode?.('delivery'); navigate('menu'); }}
+            className="btn-primary px-8 py-3.5 text-sm">
+            Commencer ma commande 🍣
+          </button>
+        </RevealObserver>
+      </div>
+    </section>
+  );
+};
+
+// ════════════════════════════════════════════════════════════
+//  OWNER / CHEF SECTION
+// ════════════════════════════════════════════════════════════
+const OwnerSection = () => (
+  <section className="py-24 px-4">
+    <div className="max-w-xl mx-auto">
+      <RevealObserver>
+        <div className="glass rounded-3xl p-8 relative overflow-hidden">
+          {/* Decorative */}
+          <div className="absolute top-0 right-0 w-40 h-40 bg-asaka-500/10 rounded-full
+            blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 opacity-[0.04] text-[110px] leading-none
+            select-none pointer-events-none font-black text-white">
+            匠
+          </div>
+
+          <div className="relative z-10">
+            <div className="flex items-start gap-5 mb-6">
+              {/* Photo placeholder — replace src with real image */}
+              <div className="flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden
+                bg-gradient-to-br from-asaka-600 to-asaka-300
+                flex items-center justify-center text-4xl shadow-glow-blue">
+                🧑‍🍳
               </div>
-              <ChevronRight size={15} className={`transition-transform ${onlineOpen ? 'rotate-90' : ''} ${subCol}`} />
-            </button>
-            {onlineOpen && (
-              <div className="px-4 pb-3 space-y-2">
-                <button
-                  onClick={() => { setOrderMode?.('online'); navigate('menu'); onClose(); }}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 border rounded-xl text-sm font-medium transition-all ${subBtnC}`}
-                >
-                  <span>🌐</span>
-                  <span className="flex-1 text-left">Commander sur notre site</span>
-                  <ArrowRight size={13} className="text-blue-500" />
-                </button>
-                <a
-                  href={GLOVO_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={onClose}
-                  className={`w-full flex items-center space-x-3 px-3 py-2.5 border rounded-xl text-sm font-medium transition-all ${subBtnC}`}
-                >
-                  <span>🛵</span>
-                  <span className="flex-1 text-left">Commander via Glovo</span>
-                  <ExternalLink size={13} className="text-blue-500" />
+              <div>
+                <h3 className="text-white font-black text-xl">Le Chef</h3>
+                <p className="text-asaka-300 text-sm">Fondateur & Chef — Asaka Sushi</p>
+                <a href={`https://instagram.com/${(RESTAURANT.instagram||'').replace('@','')}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 mt-2 text-asaka-400 text-xs
+                    hover:text-asaka-300 transition-colors font-semibold">
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="currentColor">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  </svg>
+                  {RESTAURANT.instagram}
                 </a>
               </div>
+            </div>
+
+            <blockquote className="text-asaka-muted text-sm leading-relaxed
+              border-l-2 border-asaka-500 pl-4 mb-6 italic">
+              "Chaque rouleau est une œuvre. J'ai fondé Asaka Sushi avec une seule obsession :
+              vous offrir l'expérience japonaise la plus authentique à Casablanca.
+              Des ingrédients frais, des techniques maîtrisées, une passion sans compromis."
+            </blockquote>
+
+            <div className="flex gap-4">
+              {[
+                { v: '10+', l: "Ans d'expérience" },
+                { v: '50K+', l: 'Abonnés' },
+                { v: '4.9★', l: 'Note moyenne' },
+              ].map(s => (
+                <div key={s.l} className="flex-1 text-center
+                  glass-light rounded-xl py-3">
+                  <div className="text-asaka-300 font-black text-lg">{s.v}</div>
+                  <div className="text-asaka-muted text-[10px] leading-tight mt-0.5">{s.l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </RevealObserver>
+    </div>
+  </section>
+);
+
+// ════════════════════════════════════════════════════════════
+//  LOYALTY TEASER
+// ════════════════════════════════════════════════════════════
+const LoyaltyTeaser = ({ navigate, openAuth, currentCustomer }) => (
+  <section className="py-24 px-4">
+    <div className="max-w-xl mx-auto">
+      <RevealObserver>
+        <div className="relative overflow-hidden rounded-3xl p-8
+          border border-asaka-500/30"
+          style={{ background: 'linear-gradient(135deg, #0d1b2a, #1a2d4a, #1565c0)' }}>
+          <div className="absolute inset-0 bg-gradient-to-br from-asaka-300/5 to-transparent" />
+          <div className="absolute -top-12 -right-12 w-48 h-48 bg-asaka-300/10
+            rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10">
+            <div className="text-4xl mb-3">💎</div>
+            <h2 className="text-2xl font-black text-white mb-2">Programme Fidélité</h2>
+            <p className="text-asaka-muted text-sm leading-relaxed mb-6">
+              Cumulez des points à chaque commande et débloquez des avantages exclusifs.
+              Créez un compte gratuit et profitez dès votre 1ère commande.
+            </p>
+
+            <div className="grid grid-cols-4 gap-2 mb-6">
+              {[
+                { emoji: '🥢', name: 'Bronze',  sub: 'Dès le 1er ordre' },
+                { emoji: '🌸', name: 'Argent',  sub: '5 commandes' },
+                { emoji: '⭐', name: 'Or',       sub: '15 commandes' },
+                { emoji: '💎', name: 'Diamant', sub: '30 commandes' },
+              ].map(tier => (
+                <div key={tier.name} className="glass-light rounded-xl py-3 px-2 text-center">
+                  <div className="text-xl mb-1">{tier.emoji}</div>
+                  <div className="text-white text-[11px] font-bold">{tier.name}</div>
+                  <div className="text-asaka-muted text-[9px] mt-0.5 leading-tight">{tier.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {currentCustomer ? (
+              <button onClick={() => navigate('profile')}
+                className="btn-primary w-full py-3.5 text-sm">
+                Voir mon compte →
+              </button>
+            ) : (
+              <button onClick={() => openAuth('signup')}
+                className="btn-primary w-full py-3.5 text-sm">
+                Créer un compte gratuit →
+              </button>
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Hero ─────────────────────────────────────────────────────────────────────
-const Hero = ({ navigate, isLight, setOrderMode }) => {
-  const [showPicker, setShowPicker] = useState(false);
-  return (
-  <section className={`relative min-h-screen flex items-center justify-center overflow-hidden ${isLight ? 'bg-gradient-to-br from-orange-50 via-white to-red-50' : ''}`}>
-    {/* Background */}
-    {isLight ? (
-      <>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(254,77,9,0.08),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_20%,rgba(245,158,11,0.06),transparent_60%)]" />
-      </>
-    ) : (
-      <>
-        <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-[#1a0a00] to-zinc-950" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(254,77,9,0.12),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_20%,rgba(245,158,11,0.07),transparent_60%)]" />
-      </>
-    )}
-
-    {/* Decorative rings */}
-    <div className={`absolute top-1/4 right-[15%] w-64 h-64 rounded-full border ${isLight ? 'border-orange-300/30' : 'border-orange-500/10'} animate-[spin_30s_linear_infinite]`} />
-    <div className={`absolute top-1/4 right-[15%] w-40 h-40 rounded-full border ${isLight ? 'border-orange-400/20' : 'border-orange-500/15'} animate-[spin_20s_linear_infinite_reverse]`} />
-
-    {/* Floating emoji particles */}
-    {['🍣', '🐟', '🌊', '🥢', '🍱', '🌸'].map((e, i) => (
-      <div
-        key={i}
-        className={`absolute text-2xl select-none pointer-events-none ${isLight ? 'opacity-15' : 'opacity-20'}`}
-        style={{
-          top: `${15 + i * 13}%`,
-          left: `${5 + i * 14}%`,
-          animation: `float ${4 + i}s ease-in-out infinite alternate`,
-          animationDelay: `${i * 0.8}s`,
-        }}
-      >
-        {e}
-      </div>
-    ))}
-
-    <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-      {/* Heading */}
-      <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold leading-tight mb-6 tracking-tight">
-        <span className={isLight ? 'text-gray-900' : 'text-white'}>L'Art du </span>
-        <span className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 bg-clip-text text-transparent">
-          Sushi
-        </span>
-        <br />
-        <span className={isLight ? 'text-gray-900' : 'text-white'}>Authentique</span>
-      </h1>
-
-      <p className={`text-lg max-w-xl mx-auto mb-10 leading-relaxed ${isLight ? 'text-gray-600' : 'text-zinc-400'}`}>
-        Depuis 2019, nous apportons l'excellence de la cuisine japonaise à Casablanca.
-        Fraîcheur quotidienne. Techniques ancestrales. Saveurs inoubliables.
-      </p>
-
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-        <button
-          onClick={() => navigate('menu')}
-          className="group flex items-center space-x-2 px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold text-base rounded-full transition-all shadow-2xl shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105"
-        >
-          <span>Découvrir le Menu</span>
-          <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-        </button>
-        <button
-          onClick={() => setShowPicker(true)}
-          className={`group flex items-center space-x-2 px-8 py-4 border font-semibold text-base rounded-full backdrop-blur-sm transition-all ${
-            isLight
-              ? 'bg-white/80 border-gray-300 text-gray-700 hover:bg-white hover:border-orange-300'
-              : 'bg-white/10 hover:bg-white/15 border-white/20 text-white'
-          }`}
-        >
-          <span>🍽️ Commander</span>
-          <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div className={`flex items-center justify-center gap-8 mt-16 pt-8 border-t ${isLight ? 'border-gray-200' : 'border-white/10'}`}>
-        {[
-          { value: '5+', label: 'Ans d\'expérience' },
-          { value: '25+', label: 'Spécialités' },
-          { value: '10k+', label: 'Clients ravis' },
-        ].map((stat, i) => (
-          <div key={i} className="text-center">
-            <div className="text-2xl font-extrabold text-orange-500">{stat.value}</div>
-            <div className={`text-xs mt-1 ${isLight ? 'text-gray-500' : 'text-zinc-500'}`}>{stat.label}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Scroll indicator */}
-    <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center animate-bounce`}>
-      <div className={`w-px h-8 ${isLight ? 'bg-gray-300' : 'bg-zinc-700'}`} />
-    </div>
-
-    <style>{`
-      @keyframes float {
-        0%   { transform: translateY(0px) rotate(0deg); }
-        100% { transform: translateY(-20px) rotate(10deg); }
-      }
-    `}</style>
-
-    {showPicker && (
-      <OrderPickerModal
-        isLight={isLight}
-        navigate={navigate}
-        onClose={() => setShowPicker(false)}
-        setOrderMode={setOrderMode}
-      />
-    )}
-  </section>
-  );
-};
-
-// ─── Values ───────────────────────────────────────────────────────────────────
-const Values = ({ isLight }) => (
-  <section className={`py-24 px-6 ${isLight ? 'bg-white' : ''}`}>
-    <div className="max-w-6xl mx-auto">
-      <div className="text-center mb-14">
-        <p className="text-orange-500 text-sm font-semibold uppercase tracking-widest mb-3">Nos Engagements</p>
-        <h2 className={`text-4xl font-extrabold ${isLight ? 'text-gray-900' : 'text-white'}`}>Ce Qui Nous Définit</h2>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {restaurantInfo.values.map((v, i) => (
-          <div
-            key={i}
-            className={`group p-6 border rounded-2xl transition-all duration-300 text-center ${
-              isLight
-                ? 'bg-gray-50 border-gray-200 hover:border-orange-300 hover:bg-orange-50 hover:shadow-md'
-                : 'bg-white/5 hover:bg-white/8 border-white/10 hover:border-orange-500/30'
-            }`}
-          >
-            <div className="text-4xl mb-4 group-hover:scale-110 transition-transform inline-block">{v.emoji}</div>
-            <h3 className={`font-bold mb-2 ${isLight ? 'text-gray-800' : 'text-white'}`}>{v.title}</h3>
-            <p className={`text-sm leading-relaxed ${isLight ? 'text-gray-500' : 'text-zinc-400'}`}>{v.desc}</p>
-          </div>
-        ))}
-      </div>
+      </RevealObserver>
     </div>
   </section>
 );
 
-// ─── Featured Menu ────────────────────────────────────────────────────────────
-const FeaturedMenu = ({ navigate, addToCart, isLight }) => {
-  const popular = menuItems.filter(i => i.isPopular).slice(0, 8);
-  return (
-    <section className={`py-24 px-6 ${isLight ? 'bg-orange-50/50' : 'bg-gradient-to-b from-transparent via-black/30 to-transparent'}`}>
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-end justify-between mb-10">
-          <div>
-            <p className="text-orange-500 text-sm font-semibold uppercase tracking-widest mb-3">Nos Favoris</p>
-            <h2 className={`text-4xl font-extrabold ${isLight ? 'text-gray-900' : 'text-white'}`}>Les Incontournables</h2>
-          </div>
-          <button
-            onClick={() => navigate('menu')}
-            className="hidden md:flex items-center space-x-2 text-orange-500 hover:text-orange-600 font-medium text-sm transition-colors"
-          >
-            <span>Voir tout le menu</span>
-            <ArrowRight size={16} />
-          </button>
-        </div>
+// ════════════════════════════════════════════════════════════
+//  LOCATION & CONTACT
+// ════════════════════════════════════════════════════════════
+const LocationSection = () => {
+  const mapsUrl = RESTAURANT.placeId
+    ? `https://www.google.com/maps/place/?q=place_id:${RESTAURANT.placeId}`
+    : RESTAURANT.mapsUrl;
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {popular.map((item) => (
-            <div
-              key={item.id}
-              className={`group relative border rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
-                isLight
-                  ? 'bg-white border-gray-200 hover:border-orange-300 hover:shadow-orange-100'
-                  : 'bg-white/5 hover:bg-white/8 border-white/10 hover:border-orange-500/30 hover:shadow-orange-500/10'
-              }`}
-              onClick={() => navigate('product', { itemId: item.id })}
-            >
-              <div className={`h-36 bg-gradient-to-br ${item.gradient || 'from-orange-500 to-red-600'} flex items-center justify-center relative`}>
-                <span className="text-6xl drop-shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  {item.emoji}
-                </span>
-                {item.isSignature && (
-                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/50 backdrop-blur-sm border border-orange-500/50 rounded-full text-orange-300 text-[10px] font-bold uppercase">
-                    Signature
-                  </span>
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className={`font-bold text-sm mb-1 truncate ${isLight ? 'text-gray-800' : 'text-white'}`}>{item.name}</h3>
-                <p className={`text-xs line-clamp-2 mb-3 ${isLight ? 'text-gray-500' : 'text-zinc-500'}`}>{item.description}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-orange-500 font-extrabold text-sm">{item.price} Dh</span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); addToCart(item); }}
-                    className="w-7 h-7 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center text-white font-bold text-lg transition-all hover:scale-110 shadow-lg shadow-orange-500/30"
-                  >
-                    +
-                  </button>
+  return (
+    <section className="py-24 px-4">
+      <div className="max-w-xl mx-auto">
+        <RevealObserver className="text-center mb-8">
+          <span className="text-asaka-300 text-xs font-bold tracking-widest uppercase">
+            Nous trouver
+          </span>
+          <h2 className="text-3xl font-black text-white mt-2">Localisation</h2>
+        </RevealObserver>
+
+        <RevealObserver>
+          <div className="glass rounded-3xl p-6 space-y-5">
+            {[
+              { emoji: '📍', title: 'Adresse', content: RESTAURANT.address },
+              { emoji: '🕐', title: 'Horaires',
+                content: `${RESTAURANT.hours.weekdays.label}\n${RESTAURANT.hours.weekend.label}` },
+            ].map(row => (
+              <div key={row.title} className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-asaka-500/20 border border-asaka-500/30
+                  flex items-center justify-center text-lg flex-shrink-0">
+                  {row.emoji}
+                </div>
+                <div>
+                  <div className="text-white font-semibold text-sm">{row.title}</div>
+                  <div className="text-asaka-muted text-sm mt-0.5 whitespace-pre-line leading-relaxed">
+                    {row.content}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
 
-        <div className="mt-8 text-center md:hidden">
-          <button
-            onClick={() => navigate('menu')}
-            className="px-6 py-3 border border-orange-500/40 text-orange-500 rounded-full text-sm font-medium hover:bg-orange-500/10 transition-colors"
-          >
-            Voir tout le menu →
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-// ─── Story ────────────────────────────────────────────────────────────────────
-const OurStory = ({ isLight }) => (
-  <section id="story" className={`py-24 px-6 ${isLight ? 'bg-white' : ''}`}>
-    <div className="max-w-4xl mx-auto">
-      <div className="text-center mb-14">
-        <p className="text-orange-500 text-sm font-semibold uppercase tracking-widest mb-3">Depuis 2019</p>
-        <h2 className={`text-4xl font-extrabold ${isLight ? 'text-gray-900' : 'text-white'}`}>Notre Histoire</h2>
-      </div>
-
-      <div className="relative">
-        <div className={`absolute left-[22px] md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-orange-500/60 via-orange-500/20 to-transparent`} />
-        <div className="space-y-10">
-          {restaurantInfo.story.map((chapter, i) => (
-            <div
-              key={i}
-              className={`relative flex gap-8 ${i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'}`}
-            >
-              <div className={`absolute left-[14px] md:left-1/2 md:-translate-x-1/2 w-[18px] h-[18px] rounded-full bg-orange-500 border-4 ${isLight ? 'border-white' : 'border-[#0d0d0d]'} shadow-lg shadow-orange-500/40 z-10`} />
-              <div className={`ml-14 md:ml-0 md:w-1/2 ${i % 2 === 0 ? 'md:pr-12 md:text-right' : 'md:pl-12'}`}>
-                <span className={`inline-block px-3 py-1 border rounded-full text-orange-500 text-xs font-bold mb-3 ${isLight ? 'bg-orange-50 border-orange-200' : 'bg-orange-500/15 border-orange-500/30'}`}>
-                  {chapter.year}
-                </span>
-                <h3 className={`text-lg font-bold mb-2 ${isLight ? 'text-gray-800' : 'text-white'}`}>{chapter.title}</h3>
-                <p className={`text-sm leading-relaxed ${isLight ? 'text-gray-500' : 'text-zinc-400'}`}>{chapter.content}</p>
+            {/* Phone row */}
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-asaka-500/20 border border-asaka-500/30
+                flex items-center justify-center text-lg flex-shrink-0">
+                📞
               </div>
-              <div className="hidden md:block md:w-1/2" />
+              <div>
+                <div className="text-white font-semibold text-sm">Téléphone</div>
+                <a href={`tel:${RESTAURANT.phone}`}
+                  className="text-asaka-300 text-sm mt-0.5 hover:text-white transition-colors">
+                  {RESTAURANT.phone}
+                </a>
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </section>
-);
 
-// ─── Location ─────────────────────────────────────────────────────────────────
-const Location = ({ isLight }) => {
-  // Salmon Sushi Casablanca – Sidi Maarouf coordinates / search
-  const MAPS_EMBED_URL =
-    'https://maps.google.com/maps?q=Salmon+Sushi+Casablanca+Sidi+Maarouf&output=embed&z=15&hl=fr';
-  const MAPS_DIRECTIONS_URL =
-    'https://www.google.com/maps/dir/?api=1&destination=Salmon+Sushi+Casablanca';
+            {/* Google Maps CTA */}
+            <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl
+                bg-asaka-500/15 border border-asaka-500/35 text-asaka-300 font-bold text-sm
+                hover:bg-asaka-500/25 hover:border-asaka-300/40 hover:text-white
+                transition-all duration-200 active:scale-[0.98]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/>
+              </svg>
+              Ouvrir dans Google Maps
+            </a>
 
-  return (
-    <section id="location" className={`py-24 px-6 ${isLight ? 'bg-orange-50/40' : 'bg-gradient-to-b from-transparent via-black/40 to-transparent'}`}>
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
-          <p className="text-orange-500 text-sm font-semibold uppercase tracking-widest mb-3">Nous Trouver</p>
-          <h2 className={`text-4xl font-extrabold ${isLight ? 'text-gray-900' : 'text-white'}`}>Venez Nous Rendre Visite</h2>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          {/* Embedded Map */}
-          <div className={`relative rounded-2xl overflow-hidden border h-72 lg:h-[420px] ${isLight ? 'border-gray-200 shadow-md' : 'border-white/10'}`}>
-            {/* Google Maps iframe */}
-            <iframe
-              title="Salmon Sushi Location"
-              src={MAPS_EMBED_URL}
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="absolute inset-0 w-full h-full"
-            />
-
-            {/* Directions overlay button — anchored bottom */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10">
-              <a
-                href={MAPS_DIRECTIONS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-full shadow-xl shadow-orange-500/30 transition-all hover:scale-105"
-              >
-                <MapPin size={15} />
-                <span>Itinéraire</span>
-                <ExternalLink size={13} />
+            {/* Social row */}
+            <div className="flex gap-2.5 pt-1">
+              <a href={`https://instagram.com/${(RESTAURANT.instagram||'').replace('@','')}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl
+                  glass-light text-asaka-muted hover:text-white transition-colors text-xs font-semibold">
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+                Instagram
+              </a>
+              <a href={RESTAURANT.facebook} target="_blank" rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl
+                  glass-light text-asaka-muted hover:text-white transition-colors text-xs font-semibold">
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                Facebook
+              </a>
+              <a href={`https://wa.me/${(RESTAURANT.whatsapp||'').replace(/\D/g,'')}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl
+                  glass-light text-asaka-muted hover:text-[#25d366] transition-colors text-xs font-semibold">
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                WhatsApp
               </a>
             </div>
           </div>
-
-          {/* Info Cards */}
-          <div className="space-y-4">
-            {/* Address */}
-            <div className={`p-5 border rounded-2xl flex items-start space-x-4 ${isLight ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'}`}>
-              <div className="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center flex-shrink-0">
-                <MapPin size={20} className="text-orange-500" />
-              </div>
-              <div>
-                <h3 className={`font-semibold mb-1 ${isLight ? 'text-gray-800' : 'text-white'}`}>Adresse</h3>
-                <p className={`text-sm ${isLight ? 'text-gray-500' : 'text-zinc-400'}`}>{restaurantInfo.location.address}</p>
-                <a
-                  href={MAPS_DIRECTIONS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-1 text-orange-500 hover:text-orange-400 text-xs font-medium mt-1.5 transition-colors"
-                >
-                  <span>Obtenir l'itinéraire</span>
-                  <ExternalLink size={11} />
-                </a>
-              </div>
-            </div>
-
-            {/* Hours */}
-            <div className={`p-5 border rounded-2xl flex items-start space-x-4 ${isLight ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'}`}>
-              <div className="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center flex-shrink-0">
-                <Clock size={20} className="text-orange-500" />
-              </div>
-              <div>
-                <h3 className={`font-semibold mb-2 ${isLight ? 'text-gray-800' : 'text-white'}`}>Horaires d'Ouverture</h3>
-                <div className="space-y-1 text-sm">
-                  <div className={`flex justify-between gap-6 ${isLight ? 'text-gray-600' : 'text-zinc-300'}`}>
-                    <span>Lun – Ven</span>
-                    <span className="text-orange-500 font-semibold">12h – 23h</span>
-                  </div>
-                  <div className={`flex justify-between gap-6 ${isLight ? 'text-gray-600' : 'text-zinc-300'}`}>
-                    <span>Sam – Dim</span>
-                    <span className="text-orange-500 font-semibold">12h – 00h</span>
-                  </div>
-                  <div className={`flex justify-between gap-6 ${isLight ? 'text-gray-600' : 'text-zinc-300'}`}>
-                    <span>Jours fériés</span>
-                    <span className="text-orange-500 font-semibold">12h – 00h</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact */}
-            <div className={`p-5 border rounded-2xl flex items-start space-x-4 ${isLight ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'}`}>
-              <div className="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center flex-shrink-0">
-                <Phone size={20} className="text-orange-500" />
-              </div>
-              <div>
-                <h3 className={`font-semibold mb-1 ${isLight ? 'text-gray-800' : 'text-white'}`}>Contact</h3>
-                <a href={`tel:${restaurantInfo.location.phone}`} className="text-orange-500 hover:text-orange-400 text-sm font-medium transition-colors block">
-                  {restaurantInfo.location.phone}
-                </a>
-                <a href={`mailto:${restaurantInfo.location.email}`} className={`text-sm transition-colors mt-0.5 block ${isLight ? 'text-gray-500 hover:text-gray-700' : 'text-zinc-400 hover:text-zinc-300'}`}>
-                  {restaurantInfo.location.email}
-                </a>
-              </div>
-            </div>
-
-            {/* Delivery */}
-            <div className={`p-5 border rounded-2xl ${isLight ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'}`}>
-              <h3 className={`font-semibold mb-3 ${isLight ? 'text-gray-800' : 'text-white'}`}>Aussi Disponible Sur</h3>
-              <div className="flex space-x-3">
-                <a
-                  href="https://glovoapp.com/ma/fr/casablanca/salmon-sushi-csb/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-[#ffb800]/15 border border-[#ffb800]/30 text-[#c89000] dark:text-[#ffb800] text-xs font-bold rounded-full hover:bg-[#ffb800]/25 transition-colors"
-                >
-                  🟡 Glovo
-                </a>
-                <span className={`px-3 py-1.5 border text-xs font-bold rounded-full ${isLight ? 'bg-gray-100 border-gray-200 text-gray-600' : 'bg-zinc-700/50 border-zinc-600 text-zinc-300'}`}>
-                  ⚫ Jumia Food
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        </RevealObserver>
       </div>
     </section>
   );
 };
 
-// ─── Social ───────────────────────────────────────────────────────────────────
-const SocialSection = ({ isLight }) => {
-  const GOOGLE_REVIEW_URL =
-    'https://www.google.com/search?q=Salmon+Sushi+Casablanca+Sidi+Maarouf+avis&hl=fr#lrd=0x0:0x0,1,,,,';
-  // Better: direct link to write review via Google Maps search
-  const GOOGLE_WRITE_REVIEW_URL =
-    'https://search.google.com/local/writereview?placeid=ChIJK4HQfUTJwxARBf0kcj5YXNQ';
+// ════════════════════════════════════════════════════════════
+//  REVIEWS SECTION
+// ════════════════════════════════════════════════════════════
+const ReviewsSection = () => {
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setActive(a => (a + 1) % SAMPLE_REVIEWS.length), 4500);
+    return () => clearInterval(t);
+  }, []);
 
   return (
-    <section className={`py-20 px-6 ${isLight ? 'bg-white' : ''}`}>
-      <div className="max-w-4xl mx-auto text-center">
-        <p className="text-orange-500 text-sm font-semibold uppercase tracking-widest mb-3">Rejoignez la Communauté</p>
-        <h2 className={`text-4xl font-extrabold mb-4 ${isLight ? 'text-gray-900' : 'text-white'}`}>Suivez-Nous</h2>
-        <p className={`mb-10 ${isLight ? 'text-gray-500' : 'text-zinc-400'}`}>
-          Découvrez nos créations, offres exclusives et coulisses sur nos réseaux sociaux.
-        </p>
+    <section className="py-24 px-4">
+      <div className="max-w-xl mx-auto">
+        <RevealObserver className="text-center mb-8">
+          <span className="text-asaka-300 text-xs font-bold tracking-widest uppercase">
+            Ce qu'ils disent
+          </span>
+          <h2 className="text-3xl font-black text-white mt-2">Avis Clients</h2>
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <Stars count={5} />
+            <span className="text-white font-bold text-sm">4.9 / 5</span>
+            <span className="text-asaka-muted text-sm">· 500+ avis</span>
+          </div>
+        </RevealObserver>
 
-        {/* Social Links */}
-        <div className="flex items-center justify-center gap-4 flex-wrap mb-10">
-          {[
-            {
-              icon: '📸', name: 'Instagram',
-              handle: '@salmonsushisidimaaroufofficiel',
-              url: restaurantInfo.social.instagram,
-              hoverClass: isLight ? 'hover:border-pink-400 hover:bg-pink-50' : 'hover:border-pink-500/50 hover:bg-pink-500/10',
-            },
-            {
-              icon: '📘', name: 'Facebook',
-              handle: 'Salmon Sushi',
-              url: restaurantInfo.social.facebook,
-              hoverClass: isLight ? 'hover:border-blue-400 hover:bg-blue-50' : 'hover:border-blue-500/50 hover:bg-blue-500/10',
-            },
-            {
-              icon: '🎵', name: 'TikTok',
-              handle: '@salmonsushi',
-              url: restaurantInfo.social.tiktok,
-              hoverClass: isLight ? 'hover:border-gray-400 hover:bg-gray-100' : 'hover:border-white/40 hover:bg-white/10',
-            },
-          ].map((s, i) => (
-            <a
-              key={i}
-              href={s.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex items-center space-x-3 px-5 py-3 border rounded-xl transition-all duration-300 group ${
-                isLight ? 'bg-gray-50 border-gray-200' : 'bg-white/5 border-white/10'
-              } ${s.hoverClass}`}
-            >
-              <span className="text-2xl">{s.icon}</span>
-              <div className="text-left">
-                <div className={`font-semibold text-sm ${isLight ? 'text-gray-800' : 'text-white'}`}>{s.name}</div>
-                <div className={`text-xs transition-colors ${isLight ? 'text-gray-500 group-hover:text-gray-700' : 'text-zinc-500 group-hover:text-zinc-400'}`}>{s.handle}</div>
+        <div className="space-y-4">
+          {SAMPLE_REVIEWS.map((review, i) => (
+            <RevealObserver key={review.id} delay={i * 0.08}>
+              <div className={`card-asaka p-5 transition-all duration-500 cursor-pointer
+                ${active === i
+                  ? 'border-asaka-500/70 shadow-glow-blue'
+                  : 'opacity-80 hover:opacity-100'
+                }`}
+                onClick={() => setActive(i)}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br
+                      from-asaka-600 to-asaka-300 flex items-center justify-center
+                      text-white font-black text-sm flex-shrink-0">
+                      {review.name[0]}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-white font-bold text-sm">{review.name}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold
+                          ${BADGE_COLORS[review.badge] || BADGE_COLORS.Bronze}`}>
+                          {review.badge}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Stars count={review.stars} size={11} />
+                        <span className="text-asaka-muted text-[11px]">{review.date}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Verified badge */}
+                  <span className="text-green-400 text-[10px] flex items-center gap-0.5 flex-shrink-0">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
+                      <path fillRule="evenodd"
+                        d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.491 4.491 0 01-3.497-1.307 4.492 4.492 0 01-1.307-3.497A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
+                        clipRule="evenodd"/>
+                    </svg>
+                    Vérifié
+                  </span>
+                </div>
+                <p className="text-asaka-muted text-sm leading-relaxed">{review.text}</p>
               </div>
-            </a>
+            </RevealObserver>
           ))}
         </div>
 
-        {/* ── Google Reviews CTA ──────────────────────────────────────── */}
-        <div className={`inline-flex flex-col items-center gap-4 px-8 py-6 rounded-2xl border ${
-          isLight ? 'bg-blue-50 border-blue-200' : 'bg-white/5 border-white/10'
-        }`}>
-          <div className="flex items-center space-x-2">
-            <div className="flex">
-              {[1,2,3,4,5].map(i => (
-                <Star key={i} size={22} className="text-amber-400 fill-amber-400" />
-              ))}
-            </div>
-            <span className={`font-bold text-lg ${isLight ? 'text-gray-800' : 'text-zinc-200'}`}>4.9/5</span>
-            <span className={`text-sm ${isLight ? 'text-gray-500' : 'text-zinc-500'}`}>• 500+ avis Google</span>
-          </div>
-          <p className={`text-sm ${isLight ? 'text-gray-600' : 'text-zinc-400'}`}>
-            Vous avez aimé votre expérience ? Partagez votre avis sur Google !
-          </p>
-          <a
-            href={GOOGLE_WRITE_REVIEW_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center space-x-2 px-6 py-3 bg-[#4285f4] hover:bg-[#3367d6] text-white font-semibold text-sm rounded-full transition-all shadow-lg shadow-blue-500/25 hover:scale-105"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#fff"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#fff"/>
-            </svg>
-            <span>Laisser un Avis Google</span>
-          </a>
+        {/* Dot indicators */}
+        <div className="flex justify-center gap-2 mt-6">
+          {SAMPLE_REVIEWS.map((_, i) => (
+            <button key={i} onClick={() => setActive(i)}
+              className={`rounded-full transition-all duration-300 ${
+                active === i
+                  ? 'w-6 h-2 bg-asaka-300'
+                  : 'w-2 h-2 bg-asaka-700 hover:bg-asaka-500'
+              }`} />
+          ))}
         </div>
       </div>
     </section>
   );
 };
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-const HomePage = ({ navigate, addToCart, isLight = false, setOrderMode }) => {
-  return (
-    <div>
-      <Hero navigate={navigate} isLight={isLight} setOrderMode={setOrderMode} />
-      <Values isLight={isLight} />
-      <FeaturedMenu navigate={navigate} addToCart={addToCart} isLight={isLight} />
-      <OurStory isLight={isLight} />
-      <Location isLight={isLight} />
-      <SocialSection isLight={isLight} />
-    </div>
-  );
-};
+// ════════════════════════════════════════════════════════════
+//  HOMEPAGE — Assembly
+// ════════════════════════════════════════════════════════════
+const HomePage = ({
+  navigate,
+  addToCart,
+  setOrderMode,
+  currentCustomer,
+  openAuth,
+}) => (
+  <div>
+    <HeroSection navigate={navigate} setOrderMode={setOrderMode} />
+    <MenuPreviewSection navigate={navigate} addToCart={addToCart} />
+    <HowItWorksSection navigate={navigate} setOrderMode={setOrderMode} />
+    <OwnerSection />
+    <LoyaltyTeaser navigate={navigate} openAuth={openAuth} currentCustomer={currentCustomer} />
+    <LocationSection />
+    <ReviewsSection />
+  </div>
+);
 
 export default HomePage;
