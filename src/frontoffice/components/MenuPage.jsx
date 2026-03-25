@@ -3,15 +3,17 @@
 //  Features: search, category tabs, grid/list view,
 //            ItemBottomSheet, FAB cart button
 // ═══════════════════════════════════════════════════════════
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { MENU_ITEMS, CATEGORIES } from '../../data/asakaData';
 import { sanitize } from '../../utils/security';
 import { toast } from '../../utils/toast';
+import { useDragDismiss } from '../hooks/useDragDismiss';
 
 // ── Item Bottom Sheet ─────────────────────────────────────
 const ItemBottomSheet = ({ item, onClose, addToCart, getDiscountedPrice }) => {
   const [qty, setQty] = useState(1);
   const [closing, setClosing] = useState(false);
+  const { panelRef, dragHandleProps, panelDragProps } = useDragDismiss(onClose);
 
   const handleClose = () => {
     setClosing(true);
@@ -43,15 +45,17 @@ const ItemBottomSheet = ({ item, onClose, addToCart, getDiscountedPrice }) => {
       />
       {/* Panel */}
       <div
+        ref={panelRef}
         className="bottom-sheet-panel"
         style={closing ? {
           transform: 'translateY(100%)',
           transition: 'transform 0.3s ease',
-        } : {}}>
+        } : {}}
+        {...panelDragProps}>
 
-        {/* Handle bar */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-asaka-600 rounded-full" />
+        {/* Handle bar — drag to dismiss */}
+        <div className="flex justify-center pt-3 pb-1" {...dragHandleProps}>
+          <div className="w-10 h-1.5 bg-asaka-500 rounded-full" />
         </div>
 
         <div className="px-5 pb-6">
@@ -257,6 +261,75 @@ const ItemRow = ({ item, onOpen, getDiscountedPrice }) => {
   );
 };
 
+// ── Mode Selection Sheet ──────────────────────────────────
+const ModeSheet = ({ current, onSelect, onClose }) => {
+  const { panelRef, dragHandleProps, panelDragProps } = useDragDismiss(onClose);
+  const MODES = [
+    {
+      id:    'takeaway',
+      emoji: '🥡',
+      label: 'À Emporter',
+      desc:  'Venez récupérer votre commande en boutique',
+      color: 'border-asaka-500/60 bg-asaka-500/10 text-asaka-300 hover:bg-asaka-500/15',
+    },
+    {
+      id:    'delivery',
+      emoji: '🛵',
+      label: 'Livraison',
+      desc:  'Livraison à votre adresse',
+      color: 'border-cyan-500/60 bg-cyan-900/15 text-cyan-300 hover:bg-cyan-900/25',
+    },
+  ];
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-asaka-950/80 backdrop-blur-sm" style={{ zIndex: 45 }} onClick={onClose} />
+      <div
+        ref={panelRef}
+        className="fixed bottom-0 inset-x-0 max-w-lg mx-auto bg-asaka-800
+          border-t border-asaka-700/50 rounded-t-3xl px-5 pt-4
+          pb-20 sm:pb-8"
+        style={{ zIndex: 60, animation: 'slideUp 0.3s cubic-bezier(.34,1.56,.64,1) both' }}
+        {...panelDragProps}>
+        <div className="flex justify-center mb-5" {...dragHandleProps}>
+          <div className="w-10 h-1.5 bg-asaka-500 rounded-full" />
+        </div>
+        <h3 className="text-white font-black text-lg mb-1">Mode de commande</h3>
+        <p className="text-asaka-500 text-sm mb-5">Choisissez comment vous souhaitez commander</p>
+        <div className="space-y-3">
+          {MODES.map(m => (
+            <button key={m.id} onClick={() => onSelect(m.id)}
+              className={`w-full flex items-center gap-4 p-4 rounded-2xl border
+                transition-all duration-200 active:scale-[0.98] ${m.color} ${
+                current === m.id ? 'ring-2 ring-white/20' : ''
+              }`}>
+              <span className="text-3xl">{m.emoji}</span>
+              <div className="text-left flex-1">
+                <div className="font-black text-base flex items-center gap-2">
+                  {m.label}
+                  {current === m.id && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10
+                      font-bold opacity-70">Actuel</span>
+                  )}
+                </div>
+                <div className="text-xs opacity-70 mt-0.5">{m.desc}</div>
+              </div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                className="w-5 h-5 opacity-60 flex-shrink-0">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
+              </svg>
+            </button>
+          ))}
+        </div>
+        <button onClick={onClose}
+          className="w-full mt-4 py-3 rounded-xl glass-light text-asaka-500 font-bold text-sm">
+          Annuler
+        </button>
+      </div>
+    </>
+  );
+};
+
 // ════════════════════════════════════════════════════════════
 //  MENU PAGE
 // ════════════════════════════════════════════════════════════
@@ -270,18 +343,24 @@ const MenuPage = ({
   getDiscountedPrice,
   activeDiscount,
 }) => {
-  const [search, setSearch]           = useState('');
-  const [activeCategory, setCategory] = useState('all');
-  const [viewMode, setViewMode]       = useState('grid'); // 'grid' | 'list'
+  const [search, setSearch]             = useState('');
+  const [activeCategory, setCategory]   = useState('all');
+  const [viewMode, setViewMode]         = useState('grid'); // 'grid' | 'list'
   const [selectedItem, setSelectedItem] = useState(null);
+  const [showModeSheet, setShowModeSheet] = useState(false);
 
-  const searchRef   = useRef(null);
-  const tabsRef     = useRef(null);
-  const categoryRefs = useRef({});
+  const searchRef      = useRef(null);
+  const tabsRef        = useRef(null);
+  const stickyHeaderRef = useRef(null);
+  const categoryRefs   = useRef({});
 
-  // ── Search filter ─────────────────────────────────────
-  const cleanSearch = sanitize(search, 80).toLowerCase();
-  const filtered = MENU_ITEMS.filter(item => {
+  // ── Search filter (memoised) ──────────────────────────
+  const cleanSearch = useMemo(
+    () => sanitize(search, 80).toLowerCase(),
+    [search],
+  );
+
+  const filtered = useMemo(() => MENU_ITEMS.filter(item => {
     const matchCat = activeCategory === 'all' || item.category === activeCategory;
     if (!cleanSearch) return matchCat;
     return matchCat && (
@@ -289,26 +368,31 @@ const MenuPage = ({
       item.description.toLowerCase().includes(cleanSearch) ||
       item.tags?.some(t => t.toLowerCase().includes(cleanSearch))
     );
-  });
+  }), [cleanSearch, activeCategory]);
 
-  // ── Group by category ────────────────────────────────
-  const grouped = CATEGORIES.map(cat => ({
+  // ── Group by category (memoised) ─────────────────────
+  const grouped = useMemo(() => CATEGORIES.map(cat => ({
     ...cat,
     items: filtered.filter(i => i.category === cat.id),
-  })).filter(g => g.items.length > 0);
+  })).filter(g => g.items.length > 0), [filtered]);
 
   // ── Scroll to category ───────────────────────────────
+  // Uses requestAnimationFrame so the layout settles after setCategory()
+  // re-render before we read getBoundingClientRect.
   const scrollToCategory = useCallback((catId) => {
     setCategory(catId);
     if (catId === 'all') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    const el = categoryRefs.current[catId];
-    if (el) {
-      const top = el.getBoundingClientRect().top + window.scrollY - 130;
-      window.scrollTo({ top, behavior: 'smooth' });
-    }
+    // One frame delay — lets React re-render before we measure
+    requestAnimationFrame(() => {
+      const el      = categoryRefs.current[catId];
+      if (!el) return;
+      const headerH = stickyHeaderRef.current?.offsetHeight ?? 140;
+      const top     = el.getBoundingClientRect().top + window.scrollY - headerH - 8;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    });
   }, []);
 
   // ── Count per category (for badges) ─────────────────
@@ -320,7 +404,7 @@ const MenuPage = ({
   return (
     <div className="min-h-screen bg-asaka-900">
       {/* ── Sticky header ── */}
-      <div className="sticky top-0 z-30 bg-asaka-900/95 backdrop-blur-xl
+      <div ref={stickyHeaderRef} className="sticky top-0 z-30 bg-asaka-900/95 backdrop-blur-xl
         border-b border-asaka-700/40 pt-16 sm:pt-20">
 
         {/* Search bar */}
@@ -455,11 +539,21 @@ const MenuPage = ({
             <span>
               {orderMode === 'takeaway' ? '🥡 Mode: À Emporter' : '🛵 Mode: Livraison'}
             </span>
-            <button onClick={() => setOrderMode(null)}
-              className="text-xs opacity-70 hover:opacity-100 underline">
+            <button
+              onClick={() => setShowModeSheet(true)}
+              className="text-xs opacity-70 hover:opacity-100 underline transition-opacity">
               Changer
             </button>
           </div>
+        )}
+
+        {/* Mode selection sheet */}
+        {showModeSheet && (
+          <ModeSheet
+            current={orderMode}
+            onSelect={(mode) => { setOrderMode(mode); setShowModeSheet(false); }}
+            onClose={() => setShowModeSheet(false)}
+          />
         )}
 
         {/* Search empty state */}

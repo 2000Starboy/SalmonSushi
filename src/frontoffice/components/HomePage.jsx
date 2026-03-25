@@ -78,12 +78,7 @@ const Stars = ({ count = 5, size = 14 }) => (
 // ════════════════════════════════════════════════════════════
 //  HERO SECTION
 // ════════════════════════════════════════════════════════════
-const HeroSection = ({ navigate, setOrderMode }) => {
-  const handleOrder = (mode) => {
-    setOrderMode?.(mode);
-    navigate('menu');
-  };
-
+const HeroSection = ({ navigate }) => {
   return (
     <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden">
       {/* Background layers */}
@@ -167,20 +162,39 @@ const HeroSection = ({ navigate, setOrderMode }) => {
           ))}
         </div>
 
-        {/* CTA buttons */}
+        {/* Service badges — display only, show available ordering modes */}
         <div className="animate-fade-up flex flex-col sm:flex-row gap-3 justify-center"
           style={{ animationDelay: '0.28s' }}>
-          <button
-            onClick={() => handleOrder('takeaway')}
-            className="btn-primary px-8 py-4 text-base flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3 px-7 py-4 rounded-2xl
+            border border-asaka-500/30 bg-asaka-500/10 text-asaka-300 select-none">
             <span className="text-2xl">🥡</span>
-            <span>À Emporter</span>
-          </button>
-          <button
-            onClick={() => handleOrder('delivery')}
-            className="btn-secondary px-8 py-4 text-base flex items-center justify-center gap-3">
+            <div className="text-left">
+              <div className="font-black text-base leading-tight">À Emporter</div>
+              <div className="text-asaka-500 text-xs mt-0.5">Commandez &amp; récupérez</div>
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-3 px-7 py-4 rounded-2xl
+            border border-cyan-700/30 bg-cyan-900/10 text-cyan-300 select-none">
             <span className="text-2xl">🛵</span>
-            <span>Livraison</span>
+            <div className="text-left">
+              <div className="font-black text-base leading-tight">Livraison</div>
+              <div className="text-cyan-600 text-xs mt-0.5">Livré chez vous</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Commander CTA */}
+        <div className="animate-fade-up mt-4" style={{ animationDelay: '0.34s' }}>
+          <button
+            onClick={() => navigate('menu')}
+            className="btn-primary px-10 py-4 text-base flex items-center
+              justify-center gap-3 mx-auto">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/>
+            </svg>
+            Commander maintenant
           </button>
         </div>
 
@@ -647,7 +661,7 @@ const HomePage = ({
   openAuth,
 }) => (
   <div>
-    <HeroSection navigate={navigate} setOrderMode={setOrderMode} />
+    <HeroSection navigate={navigate} />
     <MenuPreviewSection navigate={navigate} addToCart={addToCart} />
     <HowItWorksSection navigate={navigate} setOrderMode={setOrderMode} />
     <OwnerSection />

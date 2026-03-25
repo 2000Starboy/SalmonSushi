@@ -10,39 +10,103 @@ export const POINTS_VALUE   = 0.1;     // 1 point = 0.10 DH discount
 export const MIN_REDEEM     = 100;     // Minimum 100 points to redeem
 export const ACCOUNT_DISCOUNT = 10;   // % discount for registered accounts (backoffice)
 
-// ── Loyalty Badges ────────────────────────────────────────
+// ── Loyalty Tiers (6-level, BO-configurable) ───────────────
+// Each tier unlocks on reaching `minOrders`.
+// `reward` describes the one-time gift on the milestone order.
+// `discount` is the ongoing % off from that tier onward.
+// All fields can be overridden per-client from the back-office.
 export const BADGES = [
   {
-    name: 'Bronze',
-    minOrders: 0,
-    emoji: '🥢',
-    color: 'from-amber-600 to-amber-800',
-    textColor: 'text-amber-400',
-    perks: 'Bienvenue chez Asaka Sushi',
+    name:       'Regular',
+    minOrders:  0,
+    emoji:      '🍽️',
+    color:      'from-asaka-700 to-asaka-600',
+    textColor:  'text-asaka-muted',
+    bgClass:    'bg-asaka-800 border-asaka-700/40',
+    discount:   0,
+    reward:     null,
+    perks:      'Bienvenue chez Asaka Sushi !',
+    description:'Point de départ de votre aventure sushi.',
   },
   {
-    name: 'Argent',
-    minOrders: 5,
-    emoji: '🌸',
-    color: 'from-slate-300 to-slate-500',
-    textColor: 'text-slate-300',
-    perks: '+5% sur chaque commande',
+    name:       'Bronze',
+    minOrders:  10,
+    emoji:      '🥢',
+    color:      'from-amber-700 to-amber-900',
+    textColor:  'text-amber-400',
+    bgClass:    'bg-amber-950/40 border-amber-800/40',
+    discount:   5,
+    reward: {
+      label:   '-5% sur la commande #11',
+      details: '+ 1 amuse-bouche au choix',
+      emoji:   '🎁',
+    },
+    perks:      '-5% + amuse-bouche offert',
+    description:'Débloqué à 10 commandes. Votre 11ème commande vous offre 5% de réduction et un amuse-bouche de votre choix.',
   },
   {
-    name: 'Or',
-    minOrders: 15,
-    emoji: '⭐',
-    color: 'from-yellow-400 to-amber-500',
-    textColor: 'text-yellow-400',
-    perks: '+10% & livraison prioritaire',
+    name:       'Argent',
+    minOrders:  25,
+    emoji:      '🌸',
+    color:      'from-slate-300 to-slate-500',
+    textColor:  'text-slate-300',
+    bgClass:    'bg-slate-800/40 border-slate-600/30',
+    discount:   10,
+    reward: {
+      label:   '-10% sur la commande #26',
+      details: '+ 2 amuse-bouches au choix',
+      emoji:   '🌸',
+    },
+    perks:      '-10% + 2 amuse-bouches offerts',
+    description:'Débloqué à 25 commandes. Votre 26ème commande vous offre 10% de réduction et 2 amuse-bouches.',
   },
   {
-    name: 'Diamant',
-    minOrders: 30,
-    emoji: '💎',
-    color: 'from-cyan-300 to-blue-500',
-    textColor: 'text-cyan-300',
-    perks: '+15% & accès VIP menu exclusif',
+    name:       'Or',
+    minOrders:  50,
+    emoji:      '⭐',
+    color:      'from-yellow-400 to-amber-500',
+    textColor:  'text-yellow-400',
+    bgClass:    'bg-yellow-950/40 border-yellow-700/30',
+    discount:   15,
+    reward: {
+      label:   '-15% sur la commande #51',
+      details: '+ plateau sushi + amuse-bouche + livraison offerte 1 semaine',
+      emoji:   '🏆',
+    },
+    perks:      '-15% + plateau sushi + 1 sem. livraison gratuite',
+    description:'Débloqué à 50 commandes. Votre 51ème commande : 15% off, un plateau sushi, un amuse-bouche, et la livraison gratuite pendant 1 semaine.',
+  },
+  {
+    name:       'Diamant',
+    minOrders:  75,
+    emoji:      '💎',
+    color:      'from-cyan-300 to-blue-500',
+    textColor:  'text-cyan-300',
+    bgClass:    'bg-cyan-950/40 border-cyan-700/30',
+    discount:   20,
+    reward: {
+      label:   '-20% sur la commande #76',
+      details: '+ 2 semaines livraison gratuite + commande pour 2 offerte',
+      emoji:   '💎',
+    },
+    perks:      '-20% + 2 sem. livraison + commande pour 2',
+    description:'Débloqué à 75 commandes. Votre 76ème commande : 20% off, 2 semaines de livraison gratuite, et une commande complète pour 2 personnes (amuse-bouches, sushis, dessert, boisson).',
+  },
+  {
+    name:       'Sushiman',
+    minOrders:  100,
+    emoji:      '🍣',
+    color:      'from-asaka-300 to-asaka-500',
+    textColor:  'text-asaka-200',
+    bgClass:    'bg-asaka-700/40 border-asaka-400/30',
+    discount:   25,
+    reward: {
+      label:   '-25% sur la commande #101',
+      details: '+ livraison gratuite 1 mois + commande familiale pour 4',
+      emoji:   '👑',
+    },
+    perks:      '-25% + livraison 1 mois + commande famille pour 4',
+    description:'Débloqué à 100 commandes. Votre 101ème commande : 25% off, livraison gratuite pendant 1 mois, et une commande famille pour 4 personnes (amuse-bouches, soupes, sushis, dessert, boisson).',
   },
 ];
 
@@ -62,6 +126,50 @@ export const getNextBadge = (totalOrders) => {
   const next      = BADGES[idx + 1];
   const remaining = next.minOrders - totalOrders;
   return { badge: next, remaining };
+};
+
+// ── Coupon utilities ──────────────────────────────────────
+/**
+ * Generates a welcome coupon for new account registrations.
+ * Stored in customer.coupons[] and applicable to any future order.
+ */
+export const generateWelcomeCoupon = () => ({
+  id:          `WELCOME-${Date.now()}`,
+  code:        'BIENVENUE10',
+  type:        'percent',
+  value:       ACCOUNT_DISCOUNT,          // 10 (from backoffice constant)
+  description: `-${ACCOUNT_DISCOUNT}% de bienvenue — merci de nous rejoindre !`,
+  minOrder:    0,
+  expiresAt:   null,                      // null = no expiry (BO can set one later)
+  usedAt:      null,
+  usedOnOrder: null,
+  source:      'welcome',
+});
+
+/**
+ * Validates a coupon against the current order subtotal.
+ * @returns {{ valid: boolean, reason?: string }}
+ */
+export const isCouponValid = (coupon, orderSubtotal = 0) => {
+  if (!coupon)            return { valid: false, reason: 'Coupon introuvable' };
+  if (coupon.usedAt)      return { valid: false, reason: 'Ce coupon a déjà été utilisé' };
+  if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+    return { valid: false, reason: 'Ce coupon a expiré' };
+  }
+  if (coupon.minOrder > 0 && orderSubtotal < coupon.minOrder) {
+    return { valid: false, reason: `Commande minimum de ${coupon.minOrder} DH requise` };
+  }
+  return { valid: true };
+};
+
+/**
+ * Computes the discount amount for a coupon.
+ * @returns {number} discount in DH
+ */
+export const computeCouponDiscount = (coupon, subtotal) => {
+  if (!coupon) return 0;
+  if (coupon.type === 'percent') return Math.round(subtotal * coupon.value / 100);
+  return Math.min(coupon.value, subtotal);
 };
 
 // ── Menu Categories ───────────────────────────────────────

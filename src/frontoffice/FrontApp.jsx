@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════
-//  ASAKA SUSHI — Front Office App Shell
-//  State-based routing, global cart, auth, order mode
+//  ASAKA SUSHI — Front Office App Shell (refactored)
+//  Cart + orderMode now live in useCartStore (no prop-drilling)
+//  Auth + page routing remain here (BO bridge state)
 // ═══════════════════════════════════════════════════════════
 import React, { useState, useEffect } from 'react';
 import FrontNavbar from './components/FrontNavbar';
@@ -14,8 +15,20 @@ import OrderConfirmation from './components/OrderConfirmation';
 import CustomerAuth from './components/CustomerAuth';
 import CustomerProfile from './components/CustomerProfile';
 import Footer from './components/Footer';
+import ActiveOrderBar from './components/ActiveOrderBar';
 import { ToastContainer } from '../utils/toast';
 import { ORDER_CONFIG } from '../data/asakaData';
+import {
+  useCartStore,
+  selectCart,
+  selectCartCount,
+  selectCartTotal,
+  selectOrderMode,
+  selectAppliedCoupon,
+  cartActions,
+  buildOrderPayload,
+} from '../store/useCartStore';
+import { generateWelcomeCoupon } from '../data/asakaData';
 
 const FrontApp = ({
   onGoToBackoffice,
@@ -25,7 +38,7 @@ const FrontApp = ({
   setFrontCustomers,
   activeOffers = [],
 }) => {
-  // ── Theme (always dark for Asaka) ─────────────────
+  // ── Theme (always dark for Asaka) ─────────────────────
   const [theme] = useState('dark');
   const isLight = false;
 
@@ -33,84 +46,105 @@ const FrontApp = ({
     document.documentElement.classList.add('dark');
   }, []);
 
-  // ── Routing ───────────────────────────────────────
+  // ── Routing ───────────────────────────────────────────
   const [page, setPage] = useState('home');
-  const [selectedItemId, setSelectedItemId] = useState(null);
 
-  // ── Order Mode ────────────────────────────────────
-  // null | 'takeaway' | 'delivery'  (dine-in removed)
-  const [orderMode, setOrderModeState] = useState(null);
+  // ── Last Order ────────────────────────────────────────
+  const [lastOrderId,            setLastOrderId]            = useState(null);
+  const [lastOrderPoints,        setLastOrderPoints]        = useState(0);
+  const [lastOrderTotal,         setLastOrderTotal]         = useState(0);
+  const [lastOrderMode,          setLastOrderMode]          = useState(null);
+  const [lastOrderCancelWindowEnd, setLastOrderCancelWindowEnd] = useState(null);
+  const [lastOrderStep,            setLastOrderStep]            = useState(0);
+  const [lastOrderStepStartedAt,   setLastOrderStepStartedAt]   = useState(null);
+  const [lastOrderCancelled,       setLastOrderCancelled]       = useState(false);
+  const [orderBarDismissed,        setOrderBarDismissed]        = useState(false);
 
-  const setOrderMode = (mode) => {
-    // Enforce only valid modes
-    if (mode === null || mode === 'takeaway' || mode === 'delivery') {
-      setOrderModeState(mode);
-    }
-  };
+  // ── Auth ──────────────────────────────────────────────
+  const [showAuth,         setShowAuth]         = useState(false);
+  const [authMode,         setAuthMode]         = useState('login');
+  const [currentCustomer, setCurrentCustomer]  = useState(null);
 
-  // ── Last Order ────────────────────────────────────
-  const [lastOrderId, setLastOrderId] = useState(null);
-  const [lastOrderPoints, setLastOrderPoints] = useState(0);
-  const [lastOrderTotal, setLastOrderTotal] = useState(0);
-  const [lastOrderMode, setLastOrderMode] = useState(null);
+  // ── Store reads (no local cart state needed) ──────────
+  const cart           = useCartStore(selectCart);
+  const cartCount      = useCartStore(selectCartCount);
+  const cartTotal      = useCartStore(selectCartTotal);
+  const orderMode      = useCartStore(selectOrderMode);
+  const appliedCoupon  = useCartStore(selectAppliedCoupon);
 
-  // ── Auth ──────────────────────────────────────────
-  const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState('login');
-  const [currentCustomer, setCurrentCustomer] = useState(null);
-
-  // ── Cart ──────────────────────────────────────────
-  const [cart, setCart] = useState([]);
-
-  // ── Navigation ────────────────────────────────────
-  const navigate = (target, params = {}) => {
-    if (params.itemId) setSelectedItemId(params.itemId);
+  // ── Navigation ────────────────────────────────────────
+  const navigate = (target) => {
+    // Snap to top BEFORE React renders the new page so the content
+    // always appears anchored to the top of the viewport.
+    window.scrollTo(0, 0);
     setPage(target);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ── Cart helpers ──────────────────────────────────
-  const addToCart = (item, qty = 1) => {
-    setCart(prev => {
-      const existing = prev.find(c => c.item.id === item.id);
-      if (existing) return prev.map(c =>
-        c.item.id === item.id ? { ...c, qty: c.qty + qty } : c
-      );
-      return [...prev, { item, qty }];
-    });
+  // Safety-net: whenever the active page changes (including back-nav),
+  // force the scroll position to the very top after the paint.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [page]);
+
+  // ── Order step clock: start ticking once cancel window closes ─
+  useEffect(() => {
+    if (!lastOrderCancelWindowEnd || lastOrderStepStartedAt || lastOrderCancelled) return;
+    const msLeft = lastOrderCancelWindowEnd - Date.now();
+    if (msLeft <= 0) {
+      // Cancel window already past — begin from when it ended
+      setLastOrderStepStartedAt(lastOrderCancelWindowEnd);
+      return;
+    }
+    const t = setTimeout(() => setLastOrderStepStartedAt(Date.now()), msLeft);
+    return () => clearTimeout(t);
+  }, [lastOrderCancelWindowEnd, lastOrderStepStartedAt, lastOrderCancelled]);
+
+  // ── Order step advancement (survives navigation) ──────────────
+  useEffect(() => {
+    if (!lastOrderStepStartedAt || lastOrderCancelled || lastOrderStep >= 4) return;
+    const isDelivery = lastOrderMode === 'delivery';
+    const delays = [2000, 8000, 15000, isDelivery ? 25000 : 20000];
+    // cumulative[i] = ms after step-start when step i+1 should be reached
+    const cumulative = delays.reduce((acc, d) => [...acc, (acc.at(-1) ?? 0) + d], []);
+    // If navigating back after time has passed, jump straight to the correct step
+    const elapsed      = Date.now() - lastOrderStepStartedAt;
+    const correctStep  = cumulative.filter(ms => elapsed >= ms).length;
+    if (correctStep !== lastOrderStep) {
+      setLastOrderStep(correctStep);
+      return;
+    }
+    // Schedule the next step advance
+    const remaining = Math.max(0, cumulative[lastOrderStep] - elapsed);
+    const t = setTimeout(() => setLastOrderStep(s => s + 1), remaining);
+    return () => clearTimeout(t);
+  }, [lastOrderStepStartedAt, lastOrderStep, lastOrderMode, lastOrderCancelled]);
+
+  // ── Auth helpers ──────────────────────────────────────
+  const openAuth    = (mode = 'login') => { setAuthMode(mode); setShowAuth(true); };
+  const handleLogin = (customer) => {
+    setCurrentCustomer(customer);
+    // Restore this customer's saved addresses into the cart store
+    cartActions.loadAddresses(customer.savedAddresses || []);
+    setShowAuth(false);
   };
-
-  const removeFromCart = (itemId) =>
-    setCart(prev => prev.filter(c => c.item.id !== itemId));
-
-  const updateCartQty = (itemId, qty) => {
-    if (qty <= 0) { removeFromCart(itemId); return; }
-    setCart(prev => prev.map(c =>
-      c.item.id === itemId ? { ...c, qty } : c
-    ));
-  };
-
-  const clearCart = () => setCart([]);
-  const cartTotal = cart.reduce((sum, c) => sum + c.item.price * c.qty, 0);
-  const cartCount = cart.reduce((sum, c) => sum + c.qty, 0);
-
-  // ── Auth helpers ──────────────────────────────────
-  const openAuth  = (mode = 'login') => { setAuthMode(mode); setShowAuth(true); };
-  const handleLogin = (customer) => { setCurrentCustomer(customer); setShowAuth(false); };
 
   const handleSignup = (newCustomer) => {
     const customer = {
       ...newCustomer,
-      id: `AC-${Date.now()}`,
-      points: 0,
-      totalOrders: 0,
-      totalSpent: 0,
-      orderHistory: [],
-      favorites: [],
-      joinedDate: new Date().toLocaleDateString('fr-MA'),
+      id:             `AC-${Date.now()}`,
+      points:         0,
+      totalOrders:    0,
+      totalSpent:     0,
+      orderHistory:   [],
+      favorites:      [],
+      coupons:        [generateWelcomeCoupon()],  // 10% welcome coupon
+      joinedDate:     new Date().toLocaleDateString('fr-MA'),
+      savedAddresses: newCustomer.savedAddresses || [],
     };
     setFrontCustomers(prev => [...prev, customer]);
     setCurrentCustomer(customer);
+    // Pre-load any addresses they entered at signup into the cart store
+    cartActions.loadAddresses(customer.savedAddresses);
     setShowAuth(false);
   };
 
@@ -119,7 +153,7 @@ const FrontApp = ({
     if (page === 'profile') navigate('home');
   };
 
-  // ── Offer discount ────────────────────────────────
+  // ── Offer discount helpers ────────────────────────────
   const activeDiscount = activeOffers.length > 0
     ? Math.max(...activeOffers.map(o => o.discountPercent))
     : 0;
@@ -131,126 +165,167 @@ const FrontApp = ({
       : originalPrice;
   };
 
-  // ── Order placement ───────────────────────────────
+  // ── Order placement ───────────────────────────────────
+  // Reads cart from store via buildOrderPayload, writes to ordersData (BO bridge)
   const placeOrder = ({ tip = 0, paymentMethod = 'cash', pointsUsed = 0, extra = {} }) => {
-    const subtotal       = cartTotal;
-    const pointsDiscount = pointsUsed * (ORDER_CONFIG?.pointsValue ?? 0.1);
-    const offerDiscount  = activeDiscount > 0 ? subtotal * (activeDiscount / 100) : 0;
-    const deliveryFee    = (extra.type || orderMode) === 'delivery'
-      ? (ORDER_CONFIG?.deliveryFee ?? 20)
-      : 0;
-    const total          = Math.max(0, subtotal + tip - pointsDiscount - offerDiscount + deliveryFee);
-    const roundedTotal   = Math.round(total);
-    const pointsEarned   = Math.floor(roundedTotal);
-
-    const mode    = extra.type || orderMode || 'takeaway';
-    const orderId = `#${1100 + ordersData.length}`;
-
-    const location = mode === 'delivery'
-      ? `Livraison — ${extra.address || extra.gpsLink || ''}`
-      : `À Emporter — ${extra.name || ''}`;
+    const payload  = buildOrderPayload({ currentCustomer, extra: { ...extra, tip }, activeDiscount, pointsUsed, paymentMethod });
+    const orderId  = `#${1100 + ordersData.length}`;
 
     const newOrder = {
       id:            orderId,
-      customer:      currentCustomer ? currentCustomer.name : (extra.name || 'Client'),
-      items:         cart.map(c => `${c.qty}x ${c.item.name}`).join(', '),
-      total:         `${roundedTotal} DH`,
+      customer:      payload.customerName,
+      items:         payload.itemsLabel,
+      total:         `${payload.roundedTotal} DH`,
       status:        'new',
       platform:      'Site Web',
       time:          'Maintenant',
-      location,
-      paymentMethod,
-      tip:           `${tip} DH`,
+      location:      payload.location,
+      paymentMethod: payload.paymentMethod,
+      tip:           `${payload.tip} DH`,
       source:        'frontoffice',
-      mode,
-      phone:         extra.phone || '',
-      address:       extra.address || '',
-      gpsLink:       extra.gpsLink || '',
-      pickupTime:    extra.pickupTime || '',
+      mode:          payload.mode,
+      phone:         payload.phone,
+      address:       payload.address,
+      gpsLink:       payload.gpsLink,
+      pickupTime:    payload.pickupTime,
     };
 
-    setOrdersData(prev => [newOrder, ...prev]);
+    const cancelWindowEnd = Date.now() + 60_000;
+    setOrdersData(prev => [{ ...newOrder, cancelWindowEnd }, ...prev]);
 
-    // Update customer stats
+    // Update customer loyalty stats + mark coupon used
     if (currentCustomer) {
+      // If a coupon was applied, mark it as used
+      const updatedCoupons = appliedCoupon
+        ? (currentCustomer.coupons || []).map(c =>
+            c.id === appliedCoupon.id
+              ? { ...c, usedAt: new Date().toLocaleDateString('fr-MA'), usedOnOrder: orderId }
+              : c,
+          )
+        : (currentCustomer.coupons || []);
+
       const updated = {
         ...currentCustomer,
-        points: Math.max(0, (currentCustomer.points || 0) - pointsUsed) + pointsEarned,
-        totalOrders: (currentCustomer.totalOrders || 0) + 1,
-        totalSpent:  (currentCustomer.totalSpent  || 0) + roundedTotal,
+        points: Math.max(0, (currentCustomer.points || 0) - payload.pointsUsed) + payload.pointsEarned,
+        totalOrders:  (currentCustomer.totalOrders  || 0) + 1,
+        totalSpent:   (currentCustomer.totalSpent   || 0) + payload.roundedTotal,
+        coupons:      updatedCoupons,
         orderHistory: [
           {
-            id:    orderId,
-            date:  new Date().toLocaleDateString('fr-MA'),
-            total: roundedTotal,
-            items: cart.map(c => c.item.name),
-            mode,
+            id:       orderId,
+            date:     new Date().toLocaleDateString('fr-MA'),
+            total:    payload.roundedTotal,
+            items:    cart.map(c => c.item.name),
+            mode:     payload.mode,
+            status:   'active',   // 'active' | 'cancelled'
+            review:   null,       // awaiting customer review
           },
           ...(currentCustomer.orderHistory || []),
         ],
       };
       setCurrentCustomer(updated);
       setFrontCustomers(prev => prev.map(c =>
-        c.id === currentCustomer.id ? updated : c
+        c.id === currentCustomer.id ? updated : c,
       ));
     }
 
     setLastOrderId(orderId);
-    setLastOrderPoints(pointsEarned);
-    setLastOrderTotal(roundedTotal);
-    setLastOrderMode(mode);
+    setLastOrderPoints(payload.pointsEarned);
+    setLastOrderTotal(payload.roundedTotal);
+    setLastOrderMode(payload.mode);
+    setLastOrderCancelWindowEnd(cancelWindowEnd);
+    setLastOrderStep(0);
+    setLastOrderStepStartedAt(null);
+    setLastOrderCancelled(false);
+    setOrderBarDismissed(false); // always show bar for new orders
 
-    clearCart();
-    setOrderMode(null);
+    cartActions.clearCart();
+    cartActions.setOrderMode(null);
     return orderId;
   };
 
-  // ── Shared props ──────────────────────────────────
+  // ── Cancel Order (client-side, within 60s window) ─────
+  const cancelOrder = (orderId) => {
+    setLastOrderCancelled(true);
+    // 1. Mark as cancelled in the backoffice bridge
+    setOrdersData(prev => prev.map(o =>
+      o.id === orderId ? { ...o, status: 'cancelled_by_client' } : o,
+    ));
+    // 2. Mark as cancelled in the customer's order history so it shows correctly in profile
+    if (currentCustomer) {
+      const updated = {
+        ...currentCustomer,
+        orderHistory: (currentCustomer.orderHistory || []).map(o =>
+          o.id === orderId ? { ...o, status: 'cancelled' } : o,
+        ),
+      };
+      setCurrentCustomer(updated);
+      setFrontCustomers(prev => prev.map(c =>
+        c.id === currentCustomer.id ? updated : c,
+      ));
+    }
+  };
+
+  // ── Shared props ─────────────────────────────────────
+  // Cart state removed — pages import from useCartStore directly.
+  // Only BO-bridge + auth + navigation props remain here.
   const sharedProps = {
     navigate,
+    // Auth
     currentCustomer,
     openAuth,
     handleLogout,
-    cart,
-    cartCount,
-    cartTotal,
-    addToCart,
-    removeFromCart,
-    updateCartQty,
-    clearCart,
+    // BO bridge
     placeOrder,
+    // Theme
     isLight,
     theme,
+    // Offers
     activeOffers,
     activeDiscount,
     getDiscountedPrice,
-    orderMode,
-    setOrderMode,
+    // Last order (for confirmation page)
     lastOrderId,
     lastOrderPoints,
     lastOrderTotal,
     lastOrderMode,
+    cancelOrder,
+    lastOrderCancelWindowEnd,
+    lastOrderStep,
+    lastOrderCancelled,
+    // Legacy cart props — kept for backward compat while pages migrate to store
+    cart,
+    cartCount,
+    cartTotal,
+    addToCart:      cartActions.addToCart,
+    removeFromCart: cartActions.removeFromCart,
+    updateCartQty:  cartActions.updateCartQty,
+    clearCart:      cartActions.clearCart,
+    orderMode,
+    setOrderMode:   cartActions.setOrderMode,
+    // Address persistence — lets UnifiedCheckout write new addresses back to the profile
+    setFrontCustomers,
+    setCurrentCustomer,
   };
 
-  // ── Page renderer ─────────────────────────────────
+  // ── Page renderer ──────────────────────────────────────
   const renderPage = () => {
     switch (page) {
-      case 'home':         return <HomePage    {...sharedProps} />;
-      case 'menu':         return <MenuPage    {...sharedProps} />;
-      case 'cart':         return <CartPage    {...sharedProps} />;
-      case 'checkout':     return <UnifiedCheckout {...sharedProps} />;
+      case 'home':         return <HomePage          {...sharedProps} />;
+      case 'menu':         return <MenuPage          {...sharedProps} />;
+      case 'cart':         return <CartPage          {...sharedProps} />;
+      case 'checkout':     return <UnifiedCheckout   {...sharedProps} />;
       case 'confirmation': return <OrderConfirmation {...sharedProps} />;
-      case 'profile':      return <CustomerProfile {...sharedProps} />;
-      default:             return <HomePage    {...sharedProps} />;
+      case 'profile':      return <CustomerProfile   {...sharedProps} setCurrentCustomer={setCurrentCustomer} setFrontCustomers={setFrontCustomers} />;
+      default:             return <HomePage          {...sharedProps} />;
     }
   };
 
-  // Pages that should NOT show the BottomNav
   const hideBottomNav = ['checkout', 'confirmation'].includes(page);
 
   return (
     <div className="min-h-screen bg-asaka-900 text-white font-sans antialiased">
-      {/* Desktop-only top navbar */}
+      {/* Desktop top navbar */}
       <FrontNavbar
         {...sharedProps}
         currentPage={page}
@@ -268,12 +343,12 @@ const FrontApp = ({
         </div>
       )}
 
-      {/* Main content — bottom padding for BottomNav on mobile */}
+      {/* Main content */}
       <main className={!hideBottomNav ? 'pb-20 sm:pb-0' : ''}>
         {renderPage()}
       </main>
 
-      {/* Desktop footer (hidden on mobile to avoid clash with BottomNav) */}
+      {/* Desktop footer */}
       {!['checkout', 'confirmation'].includes(page) && (
         <Footer
           navigate={navigate}
@@ -293,6 +368,20 @@ const FrontApp = ({
             openAuth={openAuth}
           />
         </div>
+      )}
+
+      {/* Active order floating bar — survives navigation */}
+      {lastOrderId && page !== 'confirmation' && !orderBarDismissed && (
+        <ActiveOrderBar
+          lastOrderId={lastOrderId}
+          lastOrderCancelWindowEnd={lastOrderCancelWindowEnd}
+          lastOrderMode={lastOrderMode}
+          lastOrderStep={lastOrderStep}
+          lastOrderCancelled={lastOrderCancelled}
+          cancelOrder={cancelOrder}
+          navigate={navigate}
+          onDismiss={() => setOrderBarDismissed(true)}
+        />
       )}
 
       {/* Auth modal */}

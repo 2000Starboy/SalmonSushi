@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════
 //  ASAKA SUSHI — OrderConfirmation
-//  5-step status timeline, countdown, call button
-//  Review prompt after delivery
+//  5-step status timeline, 60s client cancellation window,
+//  countdown, call button, review prompt
 // ═══════════════════════════════════════════════════════════
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RESTAURANT, ORDER_CONFIG } from '../../data/asakaData';
 import { sanitize } from '../../utils/security';
 import { toast } from '../../utils/toast';
@@ -115,50 +115,127 @@ const ReviewForm = ({ orderId, onSubmit }) => {
   );
 };
 
+// ── Cancel Ring SVG ───────────────────────────────────────
+const CancelRing = ({ secsLeft, totalSecs }) => {
+  const r = 18;
+  const circ = 2 * Math.PI * r;
+  const progress = secsLeft / totalSecs;
+  return (
+    <svg viewBox="0 0 44 44" className="w-full h-full -rotate-90">
+      <circle cx="22" cy="22" r={r} fill="none" stroke="#3f1a1a" strokeWidth="3.5"/>
+      <circle cx="22" cy="22" r={r} fill="none"
+        stroke={secsLeft > 15 ? '#f87171' : '#ef4444'}
+        strokeWidth="3.5"
+        strokeDasharray={`${progress * circ} ${circ}`}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dasharray 0.9s linear' }}
+      />
+    </svg>
+  );
+};
+
 // ════════════════════════════════════════════════════════════
 //  ORDER CONFIRMATION
 // ════════════════════════════════════════════════════════════
+const CANCEL_TOTAL_SECS = 60;
+
 const OrderConfirmation = ({
   navigate,
   lastOrderId,
   lastOrderPoints,
   lastOrderTotal,
   lastOrderMode,
+  lastOrderCancelWindowEnd,
+  lastOrderStep,       // driven by FrontApp — persists across navigation
+  lastOrderCancelled,  // driven by FrontApp — true if cancelled from anywhere
+  cancelOrder,
   currentCustomer,
   openAuth,
   cart,
 }) => {
-  const isDelivery    = lastOrderMode === 'delivery';
-  const STEPS         = isDelivery ? STEPS_DELIVERY : STEPS_TAKEAWAY;
-  const [step, setStep] = useState(0);
-  const [countdown, setCountdown] = useState(ORDER_CONFIG?.confirmationDelay ?? 30);
+  const isDelivery = lastOrderMode === 'delivery';
+  const STEPS      = isDelivery ? STEPS_DELIVERY : STEPS_TAKEAWAY;
+  // Step comes from FrontApp — always correct even after re-navigation
+  const step       = lastOrderStep ?? 0;
+
   const [showReview, setShowReview] = useState(false);
   const [reviewDone, setReviewDone] = useState(false);
 
-  // Countdown timer
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const t = setInterval(() => setCountdown(c => c - 1), 1000);
-    return () => clearInterval(t);
-  }, []);
+  // ── Cancel window state (local UI only) ─────────────────
+  const [cancelled, setCancelled]   = useState(lastOrderCancelled || false);
+  const [cancelSecs, setCancelSecs] = useState(() => {
+    if (!lastOrderCancelWindowEnd) return 0;
+    return Math.max(0, Math.round((lastOrderCancelWindowEnd - Date.now()) / 1000));
+  });
+  const cancelWindowOpen = cancelSecs > 0 && !cancelled;
 
-  // Show review form after 3 seconds
+  // Sync if cancelled from ActiveOrderBar while away from this page
   useEffect(() => {
+    if (lastOrderCancelled) setCancelled(true);
+  }, [lastOrderCancelled]);
+
+  // Tick the cancel window down
+  useEffect(() => {
+    if (cancelSecs <= 0) return;
+    const t = setInterval(() => {
+      setCancelSecs(s => {
+        if (s <= 1) { clearInterval(t); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, []); // eslint-disable-line
+
+  const handleCancelOrder = () => {
+    if (!cancelWindowOpen) return;
+    cancelOrder?.(lastOrderId);
+    setCancelled(true);
+  };
+
+  // Show review form 3 seconds after the cancel window has closed
+  useEffect(() => {
+    if (cancelWindowOpen) return;
+    if (cancelled) return;
     const t = setTimeout(() => setShowReview(true), 3000);
     return () => clearTimeout(t);
-  }, []);
+  }, [cancelWindowOpen, cancelled]); // re-fires the moment cancelWindowOpen flips to false
 
-  // Simulate step progress (in real app this comes from backoffice via polling/websocket)
-  useEffect(() => {
-    if (step >= STEPS.length - 1) return;
-    const delays = [2000, 8000, 15000, isDelivery ? 25000 : 20000];
-    const t = setTimeout(() => setStep(s => s + 1), delays[step] || 5000);
-    return () => clearTimeout(t);
-  }, [step, isDelivery, STEPS.length]);
+  // Step advancement is now owned by FrontApp — no local driver needed here
 
   const estimatedTime = isDelivery
     ? `${ORDER_CONFIG?.estimatedDelivery ?? 45} min`
     : `${ORDER_CONFIG?.estimatedTakeaway ?? 20} min`;
+
+  // ── Cancelled screen ────────────────────────────────────
+  if (cancelled) {
+    return (
+      <div className="min-h-screen bg-asaka-900 pt-20 pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4 text-center">
+          <div className="w-20 h-20 rounded-full bg-red-900/30 border-2 border-red-500
+            flex items-center justify-center text-4xl mx-auto mb-5">
+            ❌
+          </div>
+          <h1 className="text-white font-black text-2xl mb-2">Commande annulée</h1>
+          <p className="text-asaka-muted text-sm mb-1">
+            {lastOrderId && <span className="text-asaka-400 font-semibold">{lastOrderId}</span>}
+          </p>
+          <p className="text-asaka-muted text-sm mb-8">
+            Votre commande a bien été annulée. Vous n'avez pas été débité.
+          </p>
+          <div className="space-y-3">
+            <button onClick={() => navigate('menu')}
+              className="btn-primary w-full py-3.5 text-sm">
+              Commander à nouveau 🍣
+            </button>
+            <button onClick={() => navigate('home')}
+              className="btn-ghost w-full py-3 text-sm text-asaka-muted hover:text-white">
+              Retour à l'accueil
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-asaka-900 pt-20 pb-24">
@@ -177,6 +254,36 @@ const OrderConfirmation = ({
           </p>
         </div>
 
+        {/* ── Cancel window ──────────────────────────────── */}
+        {cancelWindowOpen && (
+          <div className="mb-5 rounded-2xl border-2 border-red-500/40 bg-red-900/20
+            px-5 py-4 flex items-center gap-4">
+            {/* Ring */}
+            <div className="relative w-14 h-14 flex-shrink-0">
+              <CancelRing secsLeft={cancelSecs} totalSecs={CANCEL_TOTAL_SECS} />
+              <span className="absolute inset-0 flex items-center justify-center
+                text-red-300 font-black text-sm">
+                {cancelSecs}s
+              </span>
+            </div>
+            {/* Text + button */}
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-bold text-sm leading-tight">
+                Annulation possible encore {cancelSecs}s
+              </p>
+              <p className="text-red-300/70 text-xs mt-0.5">
+                Après ce délai, votre commande sera transmise au restaurant.
+              </p>
+            </div>
+            <button
+              onClick={handleCancelOrder}
+              className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black
+                bg-red-500 hover:bg-red-400 active:scale-95 text-white transition-all">
+              Annuler
+            </button>
+          </div>
+        )}
+
         {/* Points earned */}
         {lastOrderPoints > 0 && (
           <div className="glass rounded-2xl px-5 py-4 mb-5 flex items-center gap-4">
@@ -192,68 +299,66 @@ const OrderConfirmation = ({
           </div>
         )}
 
-        {/* Countdown */}
-        {countdown > 0 && (
-          <div className="glass-light rounded-2xl px-5 py-4 mb-5 flex items-center
-            justify-between">
-            <div>
-              <div className="text-asaka-muted text-xs font-semibold uppercase tracking-wider">
-                Confirmation dans
-              </div>
-              <div className="text-white font-black text-2xl mt-0.5">{countdown}s</div>
-            </div>
-            <div className="relative w-14 h-14">
-              <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                <circle cx="18" cy="18" r="15.9" fill="none"
-                  stroke="#1e3a5f" strokeWidth="3"/>
-                <circle cx="18" cy="18" r="15.9" fill="none"
-                  stroke="#4fc3f7" strokeWidth="3"
-                  strokeDasharray={`${(countdown / (ORDER_CONFIG?.confirmationDelay ?? 30)) * 100} 100`}
-                  strokeLinecap="round"/>
-              </svg>
-            </div>
-          </div>
-        )}
-
         {/* Timeline */}
         <div className="card-asaka p-5 mb-5">
           <h2 className="text-white font-bold text-base mb-4">Statut de votre commande</h2>
-          <div className="space-y-4">
-            {STEPS.map((s, i) => {
-              const done    = i < step;
-              const current = i === step;
-              const future  = i > step;
-              return (
-                <div key={i} className="flex items-start gap-4">
-                  {/* Icon + line */}
-                  <div className="flex flex-col items-center flex-shrink-0">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center
-                      text-lg transition-all duration-500 ${
-                      done    ? 'bg-green-900/40 border-2 border-green-500' :
-                      current ? 'bg-asaka-500/30 border-2 border-asaka-300 animate-pulse' :
-                                'bg-asaka-900 border-2 border-asaka-700/40'
+
+          {cancelWindowOpen ? (
+            /* ── Waiting state: cancel window still running ── */
+            <div className="flex flex-col items-center py-6 gap-3">
+              <div className="relative w-12 h-12">
+                <svg className="animate-spin w-12 h-12 text-asaka-600" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-20" cx="12" cy="12" r="10"
+                    stroke="currentColor" strokeWidth="3"/>
+                  <path className="opacity-60" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-xl">⏳</span>
+              </div>
+              <p className="text-asaka-300 font-bold text-sm">En attente de transmission…</p>
+              <p className="text-asaka-600 text-xs text-center leading-relaxed">
+                Le suivi démarrera automatiquement<br/>une fois le délai d'annulation écoulé.
+              </p>
+            </div>
+          ) : (
+            /* ── Live timeline ── */
+            <div className="space-y-4">
+              {STEPS.map((s, i) => {
+                const done    = i < step;
+                const current = i === step;
+                const future  = i > step;
+                return (
+                  <div key={i} className="flex items-start gap-4">
+                    {/* Icon + line */}
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center
+                        text-lg transition-all duration-500 ${
+                        done    ? 'bg-green-900/40 border-2 border-green-500' :
+                        current ? 'bg-asaka-500/30 border-2 border-asaka-300 animate-pulse' :
+                                  'bg-asaka-900 border-2 border-asaka-700/40'
+                      }`}>
+                        {done ? '✅' : s.emoji}
+                      </div>
+                      {i < STEPS.length - 1 && (
+                        <div className={`w-0.5 h-6 mt-1 transition-all duration-500 ${
+                          done ? 'bg-green-500/50' : 'bg-asaka-700/40'
+                        }`} />
+                      )}
+                    </div>
+                    {/* Text */}
+                    <div className={`pt-1.5 transition-all duration-300 ${
+                      future ? 'opacity-40' : 'opacity-100'
                     }`}>
-                      {done ? '✅' : s.emoji}
+                      <div className={`font-bold text-sm ${current ? 'text-asaka-300' : 'text-white'}`}>
+                        {s.label}
+                      </div>
+                      <div className="text-asaka-muted text-xs mt-0.5">{s.desc}</div>
                     </div>
-                    {i < STEPS.length - 1 && (
-                      <div className={`w-0.5 h-6 mt-1 transition-all duration-500 ${
-                        done ? 'bg-green-500/50' : 'bg-asaka-700/40'
-                      }`} />
-                    )}
                   </div>
-                  {/* Text */}
-                  <div className={`pt-1.5 transition-all duration-300 ${
-                    future ? 'opacity-40' : 'opacity-100'
-                  }`}>
-                    <div className={`font-bold text-sm ${current ? 'text-asaka-300' : 'text-white'}`}>
-                      {s.label}
-                    </div>
-                    <div className="text-asaka-muted text-xs mt-0.5">{s.desc}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Call restaurant */}

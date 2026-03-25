@@ -4,6 +4,7 @@
  * Fixed at bottom, shows active tab with ice-blue glow
  */
 import React from 'react';
+import { Avatar } from './CustomerProfile';
 
 const NAV_ITEMS = [
   {
@@ -54,14 +55,27 @@ const NAV_ITEMS = [
   {
     id: 'profile',
     label: 'Compte',
-    icon: ({ active }) => (
-      <svg viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'}
-        stroke="currentColor" strokeWidth={active ? 0 : 1.8}
-        className="w-6 h-6">
-        <path strokeLinecap="round" strokeLinejoin="round"
-          d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-      </svg>
-    ),
+    // icon rendered separately in BottomNav to access currentCustomer
+    icon: ({ active, currentCustomer }) => {
+      if (currentCustomer?.avatarUrl || currentCustomer?.avatarEmoji) {
+        return (
+          <div className={`w-6 h-6 rounded-lg overflow-hidden border-2 transition-all ${
+            active ? 'border-asaka-300' : 'border-asaka-600/40'
+          }`}>
+            <Avatar customer={currentCustomer} size="xs"
+              className="w-full h-full" />
+          </div>
+        );
+      }
+      return (
+        <svg viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'}
+          stroke="currentColor" strokeWidth={active ? 0 : 1.8}
+          className="w-6 h-6">
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+        </svg>
+      );
+    },
   },
 ];
 
@@ -103,7 +117,7 @@ const BottomNav = ({ currentPage, navigate, cartCount = 0, currentCustomer, open
               <span className={`transition-colors duration-200 ${
                 active ? 'text-asaka-300' : 'text-asaka-muted'
               }`} style={active ? { filter: 'drop-shadow(0 0 6px rgba(79,195,247,0.5))' } : {}}>
-                <item.icon active={active} cartCount={cartCount} />
+                <item.icon active={active} cartCount={cartCount} currentCustomer={currentCustomer} />
               </span>
 
               <span className={`text-[10px] font-semibold transition-colors duration-200 ${

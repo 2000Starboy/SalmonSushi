@@ -33,11 +33,24 @@ export const sanitizeForm = (data) => {
 // ─── Validators ───────────────────────────────────────────────────────────────
 export const validators = {
   /**
-   * Moroccan phone: 06/07 + 8 digits, or +212 format
+   * Phone: accepts all common formats — Moroccan local (06/07), 00-prefix, +prefix,
+   * or any international number in E.164. Normalizes before checking.
+   * Moroccan formats accepted:
+   *   0677889966 | 00212677889966 | +212677889966
+   *   0777889966 | 00212777889966 | +212777889966
    */
   phone: (v) => {
-    const clean = v?.replace(/\s/g, '');
-    return /^(\+212|0)(6|7)\d{8}$/.test(clean) || /^\+?[0-9]{9,15}$/.test(clean);
+    if (!v) return false;
+    const clean = v.trim().replace(/[\s\-\.\(\)]/g, '');
+    // E.164 already
+    if (/^\+[1-9]\d{6,14}$/.test(clean))    return true;
+    // 00-prefix international
+    if (/^00[1-9]\d{5,13}$/.test(clean))     return true;
+    // Moroccan local 06/07 XXXXXXXX
+    if (/^0[67]\d{8}$/.test(clean))          return true;
+    // Bare local digits (7-12 digits, needs dial code from UI)
+    if (/^\d{7,12}$/.test(clean))            return true;
+    return false;
   },
 
   /**
@@ -139,29 +152,34 @@ export const rateLimiter = {
 // ─── Order Schemas ─────────────────────────────────────────────────────────────
 export const takeawaySchema = {
   name: [
-    { validate: validators.required, message: 'Le nom est requis' },
-    { validate: validators.name,     message: 'Nom invalide (min 2 caractères)' },
+    { validate: validators.required, message: 'Le nom est requis — veuillez saisir votre prénom et nom' },
+    { validate: validators.name,     message: 'Nom invalide — minimum 2 caractères, lettres uniquement' },
   ],
   phone: [
-    { validate: validators.required, message: 'Le téléphone est requis' },
-    { validate: validators.phone,    message: 'Numéro marocain invalide (ex: 0612345678)' },
+    { validate: validators.required, message: 'Le numéro de téléphone est requis' },
+    {
+      validate: validators.phone,
+      message:  'Numéro de téléphone invalide — formats acceptés : 0677889966 · 00212677889966 · +212677889966',
+    },
   ],
   pickupTime: [
-    { validate: validators.required, message: 'Choisissez un créneau' },
+    { validate: validators.required, message: 'Choisissez un créneau de retrait' },
   ],
 };
 
 export const deliverySchema = {
   name: [
-    { validate: validators.required, message: 'Le nom est requis' },
-    { validate: validators.name,     message: 'Nom invalide (min 2 caractères)' },
+    { validate: validators.required, message: 'Le nom est requis — veuillez saisir votre prénom et nom' },
+    { validate: validators.name,     message: 'Nom invalide — minimum 2 caractères, lettres uniquement' },
   ],
   phone: [
-    { validate: validators.required, message: 'Le téléphone est requis' },
-    { validate: validators.phone,    message: 'Numéro marocain invalide (ex: 0612345678)' },
+    { validate: validators.required, message: 'Le numéro de téléphone est requis' },
+    {
+      validate: validators.phone,
+      message:  'Numéro de téléphone invalide — formats acceptés : 0677889966 · 00212677889966 · +212677889966',
+    },
   ],
-  // Address is required only when no GPS link is provided
-  // We validate the combined field in the form itself
+  // Address / GPS validated inline (combined check)
 };
 
 // ─── GPS Helper ───────────────────────────────────────────────────────────────
